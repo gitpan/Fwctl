@@ -322,7 +322,6 @@ my $report = new Fwctl::Report( %opts );
 
 $use_hostname = $opts{hostname};
 
-$^ = "STDOUT_TOP";
 $fmt_report_start = strftime "%Y.%m.%d %H:%M", localtime $report->start();
 $fmt_report_end   = strftime "%Y.%m.%d %H:%M", localtime $report->end();
 
@@ -357,6 +356,8 @@ format SRC_HOST_SUMMARY_HDR =
 
 
 		   Source Summary (By Host) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                    -------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @>>>>>>
 "Host", "Count"
@@ -366,6 +367,8 @@ format SRC_HOST_REPORT_HDR =
 
 
 	      Packet Filters Log Report (By Source Host)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 	      ------------------------------------------
 
 .
@@ -381,6 +384,8 @@ format SRC_ALIAS_REPORT_HDR =
 
 
 	      Packet Filters Log Report (By Source Alias)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 	      ------------------------------------------
 
 .
@@ -396,6 +401,8 @@ format DST_HOST_REPORT_HDR =
 
 
 	   Packet Filters Log Report (By Destination Host)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 	   -----------------------------------------------
 
 .
@@ -411,6 +418,8 @@ format DST_ALIAS_REPORT_HDR =
 
 
 	   Packet Filters Log Report (By Destination Alias)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 	   -----------------------------------------------
 
 .
@@ -426,6 +435,8 @@ format SERV_REPORT_HDR =
 
 
 		Packet Filters Log Report (By Service)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 		--------------------------------------
 
 .
@@ -441,6 +452,8 @@ format SERV_HOST_REPORT_HDR =
 
 
 	     Packet Filters Log Report (By Host/Service)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 	     -------------------------------------------
 
 .
@@ -456,6 +469,8 @@ format SERV_ALIAS_REPORT_HDR =
 
 
 	     Packet Filters Log Report (By Alias/Service)
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 	     --------------------------------------------
 
 .
@@ -491,6 +506,8 @@ format SRC_ALIAS_SUMMARY_HDR =
 
 
 		   Source Summary (By Alias) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                    -------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @>>>>>>
 "Alias", "Count"
@@ -501,6 +518,8 @@ format DST_HOST_SUMMARY_HDR =
 
 
 		 Destination Summary (By Host) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                  ------------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @>>>>>>
 "Host", "Count"
@@ -511,6 +530,8 @@ format DST_ALIAS_SUMMARY_HDR =
 
 
 		Destination Summary (By Alias) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                 -------------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @>>>>>>
 "Alias", "Count"
@@ -521,6 +542,8 @@ format SERV_SUMMARY_HDR =
 
 
 		 Service Summary (By Service) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                  -----------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @>>>>>>
 "Service", "Count"
@@ -536,6 +559,8 @@ format SERV_HOST_SUMMARY_HDR =
 
 
 		   Service Summary (By Host) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                    --------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<<< @>>>>>
 "Host", "Service", "Count"
@@ -551,6 +576,8 @@ format SERV_ALIAS_SUMMARY_HDR =
 
 
                   Service Summary (By Alias) Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
 		  ---------------------------------
 @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< @<<<<<<<<<<<<<<<<<<<<<<< @>>>>>
 "Alias", "Service", "Count"
@@ -566,6 +593,8 @@ format DETAILS_HDR =
 
 
 		  Details Packet Filters Log Report
+@>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> - @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+$fmt_report_start, $fmt_report_end
                   ---------------------------------
 
 .

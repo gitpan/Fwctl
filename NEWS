@@ -1,3 +1,15 @@
+Fwctl NEWS -- History of User-Visible Changes.  June 11 2000
+
+* Changes in fwctl 0.27
+
+* Bug fixes:
+    - Reduce memory usage by four for report's generation.
+    - Interface selection was broken when multiple routes were possible. 
+      (It picked the first one, rather than the most specific).
+    - Fixed ordering problem in the all service related to rules 
+      optimization. 
+
+
 Fwctl NEWS -- History of User-Visible Changes.  May 08 2000
 
 * Changes in fwctl 0.26

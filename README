@@ -1,14 +1,14 @@
 Fwctl
 =====
 
-Version: 0.25
+Version: 0.27
 
 Requirements
 ------------
 kernel 2.2
 ipchains 1.3.8
 IPChains.pm 0.5
-Net::IPv4Addr.pm 0.06 or later
+Net::IPv4Addr.pm 0.09 or later
 ipmasqadm for port forwarding
 
 Description
@@ -94,12 +94,17 @@ can subscribe by sending an empty message to fwctl-users-subscribe@insu.com.
 Bugs
 ----
 
-Send bug reports and suggestions to francis.lacoste@iNsu.COM.
+Send bug reports and suggestions to bugs@iNsu.COM.
+
+Author
+------
+
+Francis J. Lacoste <francis.lacoste@iNsu.COM>
 
 Copyright
 ---------
 
-Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations. Inc.
+Copyright (c) 1999,2000 iNsu Innovations. Inc.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms same terms as perl itself.

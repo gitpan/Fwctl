@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -13,7 +13,7 @@ package Fwctl::Services::all;
 
 use strict;
 
-use Fwctl::RuleSet qw(:ip_rulesets :masq);
+use Fwctl::RuleSet qw(:ip_rulesets :tcp_rulesets :udp_rulesets :masq);
 use IPChains;
 
 sub new {
@@ -27,35 +27,65 @@ sub prototypes {
   (
    IPChains->new(
 		 Rule	    => $target,
+		 Prot	    => 'tcp',
+		 %{$options->{ipchains}},
+		),
+   IPChains->new(
+		 Rule	    => $target,
+		 Prot	    => 'udp',
+		 %{$options->{ipchains}},
+		),
+   IPChains->new(
+		 Rule	    => $target,
+		 Prot	    => 'icmp',
+		 %{$options->{ipchains}},
+		),
+   IPChains->new(
+		 Rule	    => $target,
 		 %{$options->{ipchains}},
 		),
   );
 }
 
 sub block_rules {
-  my $self = shift;
-  my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
+    my $self = shift;
+    my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
-  # Build prototype rule
-  my ($fw) = $self->prototypes( $target, $options );
+    # Build prototype rule
+    my ($tcp, $udp, $icmp, $all) = $self->prototypes( $target, $options );
 
-  block_ip_ruleset( $fw, $src, $src_if, $dst, $dst_if );
-  block_ip_ruleset( $fw, $dst, $dst_if, $src, $src_if  );
+    block_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if );
+    block_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if );
+    block_ip_ruleset( $icmp, $src, $src_if, $dst, $dst_if );
+    block_ip_ruleset( $icmp, $dst, $dst_if, $src, $src_if );
+    block_ip_ruleset( $all, $src, $src_if, $dst, $dst_if );
+    block_ip_ruleset( $all, $dst, $dst_if, $src, $src_if );
 }
 
 sub accept_rules {
-  my $self = shift;
-  my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
+    my $self = shift;
+    my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
-  # Build prototype rule
-  my ($fw) = $self->prototypes( $target, $options );
+    # Build prototype rule
+    my ($tcp, $udp, $icmp, $all) = $self->prototypes( $target, $options );
 
-  accept_ip_ruleset( $fw, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
-  accept_ip_ruleset( $fw, $dst, $dst_if, $src, $src_if, 
-		     $options->{masq} ? UNMASQ : NOMASQ
-		   );
+    accept_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if,
+			$options->{masq} ? MASQ : NOMASQ );
+    accept_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
+			$options->{masq} ? MASQ : NOMASQ
+		      );
+    accept_ip_ruleset( $icmp, $src, $src_if, $dst, $dst_if,
+		       $options->{masq} ? MASQ : NOMASQ
+		     );
+    accept_ip_ruleset( $icmp, $dst, $dst_if, $src, $src_if,
+		       $options->{masq} ? UNMASQ : NOMASQ
+		     );
+    accept_ip_ruleset( $all, $src, $src_if, $dst, $dst_if,
+		       $options->{masq} ? MASQ : NOMASQ
+		     );
+    accept_ip_ruleset( $all, $dst, $dst_if, $src, $src_if,
+		       $options->{masq} ? UNMASQ : NOMASQ
+		     );
 }
 
 sub account_rules {
@@ -63,15 +93,14 @@ sub account_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   # Build prototype rule
-  my ($fw) = $self->prototypes( $target, $options );
+  my ($tcp, $udp, $icmp, $all) = $self->prototypes( $target, $options );
 
-  acct_ip_ruleset( $fw, $src, $src_if, $dst, $dst_if,
+  acct_ip_ruleset( $all, $src, $src_if, $dst, $dst_if,
 		   $options->{masq} ? MASQ : NOMASQ
 		 );
-  acct_ip_ruleset( $fw, $dst, $dst_if, $src, $src_if, 
+  acct_ip_ruleset( $all, $dst, $dst_if, $src, $src_if, 
 		   $options->{masq} ? UNMASQ : NOMASQ
 		 );
-
 }
 
 sub valid_options {
@@ -99,34 +128,18 @@ in our filters.
 
 Needless to say that
 
-    accept   all
+    accept all
 
 is not a really secure use of this module.
 
-=head1 CAVEATS
-
-The way Fwctl organizes its rules, the all rules will always be
-processed after more specific rules. That is to say that if you 
-use
-
-    accept   all -src INTERNAL_NET
-    block   ftp
-
-This will result (perhaps unintuitively) in ftp being blocked also for
-the INTERNAL_NET. This is becaus Fwctl optimizes its rules according
-to protocol. So it processes rules for ICMP, TCP, UDP, OTHER and than ALL.
-(Other is if you specify another protocol, but not any). This optimization
-has only effects on rules matching without a protocol specified.
-
-To fix the previous problem use :
-
-    accept all -src INTERNAL_NET
-    accept ftp -src INTERNAL_NET # Optimization work around
-    block ftp
 
 =head1 AUTHOR
 
-Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
+Francis J. Lacoste <francis.lacoste@iNsu.COM>
+
+=head1 COPYRIGHT
+
+Copyright (c) 1999,2000 iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

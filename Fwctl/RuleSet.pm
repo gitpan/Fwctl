@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999, 2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -365,15 +365,8 @@ sub ip_forward_ruleset {
 	udp_masq_forward_ruleset( @_ );
 	last SWITCH;
       };
-      /icmp|oth/ && do {
+      /icmp|oth|all/ && do {
 	ip_masq_forward_ruleset( @_ );
-	last SWITCH;
-      };
-      /all/ && do {
-	# Well ALL with masq only means TCP,UDP,IP
-	# I don't think we would like to see
-	# other protocols pass through w/o masquerading.
-	all_masq_forward_ruleset(  @_ );
 	last SWITCH;
       };
   }
@@ -388,12 +381,8 @@ sub ip_forward_ruleset {
 	udp_unmasq_forward_ruleset( @_ );
 	last SWITCH;
       };
-      /icmp|oth/ && do {
+      /icmp|oth|all/ && do {
 	ip_unmasq_forward_ruleset( @_ );
-	last SWITCH;
-      };
-      /all/ && do {
-	all_unmasq_forward_ruleset( @_ );
 	last SWITCH;
       };
   }
@@ -472,40 +461,6 @@ sub ip_masq_forward_ruleset {
   $ipchain->attribute( Source	    => $src );
 }
 
-sub all_masq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
-
-  $ipchain->attribute( Interface => $src_if->{interface} );
-  $ipchain->append( "$base-in" );
-
-  my $rule = $ipchain->attribute( 'Rule' );
-  $ipchain->attribute( Rule => 'MASQ' );
-  $ipchain->attribute( Interface => $dst_if->{interface} );
-  $ipchain->append( "$base-fwd" );
-  $ipchain->attribute( Rule => $rule );
-
-  # Masquerade rewrite packets
-  $ipchain->attribute( Source	    => $dst_if->{ip} );
-
-  # ICMP
-  $ipchain->attribute( Prot => "icmp" );
-  $ipchain->append( "icmp-out" );
-
-  # UDP and TCP
-  # All shouldn't have a saved port.
-  $ipchain->attribute( SourcePort   => MASQ_PORTS ) unless $masq & MASQNOHIGH;
-
-  $ipchain->attribute( Prot => "tcp" );
-  $ipchain->append( "tcp-out" );
-
-  $ipchain->attribute( Prot => "udp" );
-  $ipchain->append( "udp-out" );
-
-  # Restore
-  $ipchain->attribute( Prot => undef );
-  $ipchain->attribute( SourcePort => undef );
-}
-
 # Add rule to necessary chains to handle
 # a route TCP packet which was masqueraded.
 sub tcp_unmasq_forward_ruleset {
@@ -551,36 +506,6 @@ sub ip_unmasq_forward_ruleset {
   $ipchain->append( "$base-out" );
 }
 
-sub all_unmasq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
-
-  $ipchain->attribute( Interface => $src_if->{interface} );
-  $ipchain->attribute( Dest	 => $src_if->{ip} );
-
-  # ICMP
-  $ipchain->attribute( Prot => 'icmp' );
-  $ipchain->append( "icmp-in" );
-
-  # UDP
-  $ipchain->attribute( DestPort  => MASQ_PORTS ) unless $masq & MASQNOHIGH;
-  $ipchain->attribute( Prot => 'udp' );
-  $ipchain->append( "udp-in" );
-
-  # TCP
-  $ipchain->attribute( Prot => 'tcp' );
-  $ipchain->attribute( SYN => '!' );
-  $ipchain->append( "tcp-in" );
-
-  # Restore
-  $ipchain->attribute( Prot => undef );
-  $ipchain->attribute( DestPort => undef );
-  $ipchain->attribute( SYN => undef );
-
-  $ipchain->attribute( Dest	 => $dst );
-  $ipchain->attribute( Interface => $dst_if->{interface} );
-  $ipchain->append( "$base-out" );
-
-}
 
 sub tcpudp_portfw_forward_ruleset {
   my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq, $portfw ) = @_;
@@ -1168,7 +1093,11 @@ inversed).
 
 =head1 AUTHOR
 
-Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
+Francis J. Lacoste <francis.lacoste@iNsu.COM>
+
+=head1 COPYRIGHT
+
+Copyright (c) 1999,2000 iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -17,15 +17,15 @@ use vars qw( $VERSION $PORTFW $IPCHAINS );
 use Carp;
 
 BEGIN {
-  $VERSION = '0.26';
+    $VERSION = '0.27';
 
-  eval { use IPChains::PortFW; new IPChains::PortFW; };
-  $PORTFW = 1 unless $@;
+    eval { use IPChains::PortFW; new IPChains::PortFW; };
+    $PORTFW = 1 unless $@;
 
-  # Look for ipchains
-  ($IPCHAINS) = grep { -x "$_/ipchains" } split /:/, "/sbin:/bin:/usr/sbin:/usr/bin:$ENV{PATH}";
-  die ( "Couldn't find ipchains in PATH ($ENV{PATH})\n" ) unless $IPCHAINS;
-  $IPCHAINS .= "/ipchains";
+    # Look for ipchains
+    ($IPCHAINS) = grep { -x "$_/ipchains" } split /:/, "/sbin:/bin:/usr/sbin:/usr/bin:$ENV{PATH}";
+    die ( "Couldn't find ipchains in PATH ($ENV{PATH})\n" ) unless $IPCHAINS;
+    $IPCHAINS .= "/ipchains";
 }
 
 # Preloaded methods go here.
@@ -98,19 +98,52 @@ sub interfaces {
 
     if (@_) {
 	# Must get an array of interface references
-	$self->{interfaces} = map { $_->{name} => $_ } @_;
+	$self->{interfaces} = { map { $_->{name} => $_ } @_ };
+	$self->{routes} = undef;
     }
 
     # Returns an array of references
     values %{$self->{interfaces}};
 }
 
+sub routes {
+    my $self = $_[0];
+
+    unless ($self->{routes}) {
+	my @routes = ();
+
+	foreach my $if ( $self->interfaces ) {
+	    # Don't include the ANY interface.
+	    next if $if->{name} eq "ANY";
+
+	    # Host route to the interface.
+	    unless ( $if->{netmask} == 32 ) {
+		push @routes, [ $if, { network => $if->{ip},
+				       netmask => 32 } ];
+	    }
+
+	    # Directly connected net.
+	    push @routes, [ $if, $if ];
+
+	    # Other connected nets.
+	    push @routes, map { [$if, $_ ] } @{$if->{other_nets}};
+	}
+
+	# Sort from the most specific to the least specific.
+	$self->{routes} = [ sort { $b->[1]{netmask} <=> $a->[1]{netmask} } @routes ];
+    }
+
+    @{ $self->{routes} };
+}
+
 # Get or set an interface by name
 sub interface {
-  my $self = shift;
-  my $name = shift;
+  my ($self, $name) = @_;
 
-  $self->{interfaces}{$name} = shift if @_;
+  if ( @_ == 3  ) {
+      $self->{interfaces}{$name} = $_[2];
+      $self->{routes} = undef;
+  }
 
   $self->{interfaces}{$name};
 }
@@ -274,42 +307,27 @@ sub find_host_alias {
 # Given an IP, network or whatever, find the target
 # interface.
 sub find_interface {
-  my ($self,$ip) = @_;
+    my ($self,$ip) = @_;
 
-  # Magic interfaces
-  return $self->interface('ANY') if $ip =~ /ANY/i;
-  return $self->interface('EXT') if $ip =~ /INTERNET/i;
+    # Magic interfaces
+    return $self->interface('ANY') if $ip =~ /ANY/i;
+    return $self->interface('EXT') if $ip =~ /INTERNET/i;
 
-  # Check each interface to see if this is 
-  # a local IP.
-  foreach my $if ( $self->interfaces ) {
-      next if $if->{name} eq "ANY";    # Skip ANY
+    # Check each interface to see if the ip
+    # is part of a network
+    foreach my $route ( $self->routes ) {
+	my ( $if, $net ) = @$route;
 
-      return $if if $ip eq $if->{ip};
-  }
+	# Check if they are on the same network
+	return $if if ipv4_in_network( $net->{network},
+				       $net->{netmask},
+				       $ip
+				     );
 
-  # Check each interface to see if the ip
-  # is part of a network
-  foreach my $if ( $self->interfaces ) {
-    next if $if->{name} eq "ANY";    # Skip ANY
-
-    # Check if they are on the same network
-    return $if if ipv4_in_network( $if->{network},
-				   $if->{netmask},
-				   $ip
-				 );
-
-    # Check connected networks
-    foreach my $net ( @{$if->{other_nets}} ) {
-      return $if if ipv4_in_network( $net->{network},
-				     $net->{netmask},
-				     $ip
-				   );
     }
-  }
 
-  # Default is Internet
-  return $self->interface('EXT');
+    # Default is Internet
+    return $self->interface('EXT');
 }
 
 # This breaks in regards to virtual interface
@@ -1395,7 +1413,7 @@ standard services for details.
 
 =head1 AUTHOR
 
-Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
+Copyright (c) 1999,2000 Francis J. Lacoste iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

@@ -1,6 +1,6 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.26
+Version: 0.27
 Release: 1i
 Source: http://iNDev.iNsu.COM/sources/%{name}-%{version}.tar.gz
 Copyright: GPL or Artistic License
@@ -11,7 +11,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArchitectures: noarch
 Prereq: /sbin/chkconfig
 Provides: perl(IPChains::PortFW) = 0.5
-Requires: perl, perl(Net::IPv4Addr) >= 0.07
+Requires: perl, perl(Net::IPv4Addr) >= 0.09
 Requires: perl(IPChains) >= 0.5, ipchains >= 1.3.8
 Requires: perl(IPChains::PortFW)
 
@@ -99,6 +99,10 @@ rm -fr $RPM_BUILD_ROOT
 %config(noreplace) %attr(640,root,root) /var/log/fwctl_*
 
 %changelog
+* Sun Jun 11 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.27-1i]
+- Updated to version 0.27.
+
 * Mon May 08 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.26-1i]
 - Released 0.26.

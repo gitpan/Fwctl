@@ -1,9 +1,6 @@
 Future enhancements to Fwctl
 ----------------------------
 
-- Report are built into memory which cause serious problems when
-  large reports are computed.
-
 - Add possibility to log only connection initialization packet.
 
 - Add support for transparent proxy.

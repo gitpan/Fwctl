@@ -55,7 +55,7 @@ etc.)
 =cut
 
 BEGIN {
-    ($VERSION) = '$Revision: 1.6 $' =~ /(Revision: ([\d.]+))/;
+    ($VERSION) = '$Revision: 1.7 $' =~ /(Revision: ([\d.]+))/;
     @ISA = qw( Exporter );
 
     @EXPORT = ();
@@ -235,42 +235,39 @@ sub report_iterator {
     return [ map { $_->[1] } sort { $a->[0] cmp $b->[0] } values %cache ];
 }
 
-sub remove_duplicates {
-    my ($records,$cutoff) = @_;
+# Removes packets that are in the same time window.
+sub is_duplicate {
+    my ( $self, $r ) = @_;
 
-    # Sort by timestamp
-    my @new_records = ();
-    foreach my $r ( @$records ) {
-	my $window = $r->[TIME] - $cutoff;
-	my $seen = 0;
-	for ( my $i = $#new_records;
-	      $i >= 0 && $new_records[$i][TIME] > $window;
-	      $i--
-	    )
-	{
-	    my $nr = $new_records[$i];
-	    next unless $r->[PROTO]  == $nr->[PROTO];
-	    next unless $r->[SRC_IP] eq $nr->[SRC_IP];
-	    next unless $r->[DST_IP] eq $nr->[DST_IP];
-	    if ( $r->[PROTO] == 6 ||
-		 $r->[PROTO] == 17
-	       )
-	    {
-		# For TCP/UDP we only need to check the dst port
-		next unless $r->[DST_PORT] == $nr->[DST_PORT];
-	    } else {
-		next unless $r->[SRC_PORT] == $nr->[SRC_PORT];
-		next unless $r->[DST_PORT] == $nr->[DST_PORT];
-	    }
+    my $cutoff = $self->{threshold};
+    return 0 unless $cutoff > 0;
+    my $window = $r->[TIME] - $cutoff;
+    my $seen = 0;
+    for ( my $i = $#{$self->{records}};
+	  $i >= 0 && $self->{records}[$i][TIME] > $window;
+	  $i--
+	)
+    {
+	my $nr = $self->{records}[$i];
+	next unless $r->[PROTO]  == $nr->[PROTO];
+	next unless $r->[SRC_IP] eq $nr->[SRC_IP];
+	next unless $r->[DST_IP] eq $nr->[DST_IP];
+	if ( $r->[PROTO] == 6 ||
+	     $r->[PROTO] == 17
+	   )
+	  {
+	      # For TCP/UDP we only need to check the dst port
+	      next unless $r->[DST_PORT] == $nr->[DST_PORT];
+	  } else {
+	      next unless $r->[SRC_PORT] == $nr->[SRC_PORT];
+	      next unless $r->[DST_PORT] == $nr->[DST_PORT];
+	  }
 
-	    # This is part of the same try
-	    $seen = 1;
-	    last;
-	}
-	push @new_records, $r unless $seen;
+	# This is part of the same try
+	return 1;
     }
 
-    return \@new_records;
+    return 0;
 }
 
 sub parse_date {
@@ -419,11 +416,11 @@ sub build_constraints {
     return $sub;
 }
 
+## Assumes that the records are already sorted by time.
 sub read_records {
     my $self = shift;
 
     # Read in the data
-    my $records = [];
     push @{$self->{opts}{files}}, \*STDIN unless @{$self->{opts}{files}};
   FILE:
     foreach my $file ( @{$self->{opts}{files}} ) {
@@ -438,6 +435,7 @@ sub read_records {
 	      or do { warn "can't open file $file\n"; next FILE };
 	}
 
+	my $i = 0;
 	while (<$fh>) {
 	    chomp;
 	    my @fields = split /\|/, $_;
@@ -446,23 +444,18 @@ sub read_records {
 		$self->{end} = $self->{start} + $self->{period}
 		  if defined $self->{period};
 	    }
-	    # Skip fields outside the period
-	    next unless $self->{start} <= $fields[TIME] &&
-	      $self->{end} >= $fields[TIME];
+	    # Skip fields before the period
+	    next unless $self->{start} <= $fields[TIME];
+
+	    # Quit loop if we reach the end of the period.
+	    last FILE if $self->{end} < $fields[TIME];
 
 	    next unless $self->{constraints}->( \@fields );
 
-	    push @$records, \@fields;
+	    next if $self->is_duplicate( \@fields );
+
+	    push @{$self->{records}}, \@fields;
 	}
-    }
-
-    # Records are sorted by time.
-    $self->{records} = [ sort { $a->[TIME] <=> $b->[TIME] } @$records ];
-
-    # Removes packet logs that are in the same window
-    if ( $self->{threshold} > 0 ) {
-	$self->{records} = remove_duplicates( $self->{records},
-					      $self->{threshold} );
     }
 }
 

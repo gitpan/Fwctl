@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (C) 1999,2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -21,7 +21,7 @@ use vars qw( $VERSION $IPMASQADM );
 
 BEGIN {
 
-  ($VERSION) = '$Revision: 1.2 $' =~ /Revision: ([0-9.]+)/;
+  ($VERSION) = '$Revision: 1.3 $' =~ /Revision: ([0-9.]+)/;
 
 }
 
@@ -172,7 +172,7 @@ sub list {
 
     my @rules = ();
     foreach my $line ( @lines ) {
-	my ( $prot, $laddr, $raddr, $lport, $rport, undef, $pref ) =
+	my ( $prot, $laddr, $raddr, $lport, $rport, $ignored, $pref ) =
 	  split / +/, $line;
 	push @rules, $self->new( Proto	    => lc $prot,
 				  LocalAddr => $laddr,
@@ -297,7 +297,7 @@ Francis J. Lacoste <francis@insu.com>
 
 =head1 COPYRIGHT
 
-Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations Inc.
+Copyright (C) iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

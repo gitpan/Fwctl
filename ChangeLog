@@ -1,4 +1,48 @@
+2000-06-11  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* TAG: FWCTL_0_27
+
+	* Fwctl/RuleSet.pm: 
+	(all_masq_forward_ruleset) removed.
+	(all_umasq_forward_ruleset) removed.
+	(ip_forward_ruleset) Changed implementation for all service.
+	(doc) Changed copyright.
+
+	* Fwctl/Services/all.pm: Add rules to all chains:
+	tcp, udp and icmp, to fix problem related to rules
+	optimization.
+
+2000-06-07  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Fwctl.pm: 
+	(routes) Return a destination based routing table.
+	(find_interface) Handle case of two routes with one more
+	specific than the other.
+	(interfaces) Fixed a bug when setting the interfaces. 
+	(doc) Copyright is all to iNsu.
+	
+	* test-data/etc/interfaces: Better interface definition
+	  for an IP alias.
+
+	* IPChains/PortFW.pm: Changed Copyright. Removed 
+	  assignment to undef which requires perl 5.005.
+
+2000-05-12  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* fwctlreport: Removed page header and put report's date
+	  under the title.
+
+	* Fwctl/Report.pm 
+	(report_iterator): Assumes that records are
+	  already sorted by time stamp to reduce memory consumption.
+	(remove_duplicates): Was transformed on is_duplicate which is
+	called before adding each records, again to reduce memory usage.
+
 2000-05-08  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Fwctl.spec (Requires): Requires Net-IPv4Addr >= 0.09
+
+	* Makefile.PL (PREREQ): Requires Net::IPv4Addr >= 0.09
 
 	* TAG: FWCTL_0_26
 
