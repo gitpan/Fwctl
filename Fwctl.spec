@@ -1,13 +1,13 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.25
-Release: 3i
+Version: 0.26
+Release: 1i
 Source: http://iNDev.iNsu.COM/sources/%{name}-%{version}.tar.gz
 Copyright: GPL or Artistic License
-Group: Development/Libraries/Perl
+Group: Applications/System
 Prefix: /usr
 URL: http://iNDev.iNsu.COM/Fwctl/
-BuildRoot: /var/tmp/%{name}-%{version}
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArchitectures: noarch
 Prereq: /sbin/chkconfig
 Provides: perl(IPChains::PortFW) = 0.5
@@ -99,6 +99,10 @@ rm -fr $RPM_BUILD_ROOT
 %config(noreplace) %attr(640,root,root) /var/log/fwctl_*
 
 %changelog
+* Mon May 08 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.26-1i]
+- Released 0.26.
+
 * Thu Feb 17 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.25-3i]
 - Moved weekly reports back to logrotate script.

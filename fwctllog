@@ -215,8 +215,8 @@ while (<>) {
     # Parse the line
     my ( $month_str, $mday, $hours, $min, $sec, $chain, $action,
          $interface, $proto, $src, $srcport, $dst, $dstport ) =
-	   /^(...) +(\d+) (\d\d):(\d\d):(\d\d).*Packet log: (\w+) (\w+) (\w+) PROTO=(\d+) (\d+\.\d+\.\d+\.\d+):(\d+) (\d+\.\d+\.\d+\.\d+):(\d+)/;
-    next unless defined $month_str;
+	   /^(...) +(\d+) (\d\d):(\d\d):(\d\d).*Packet log: ([-\w]+) (\w+) (\w+) PROTO=(\d+) (\d+\.\d+\.\d+\.\d+):(\d+) (\d+\.\d+\.\d+\.\d+):(\d+)/;
+    die "fwctllog: failed to package line: $_" unless defined $month_str;
 
     # Transform the timestamp into epoch time
     my $month = $month_str2num{$month_str};

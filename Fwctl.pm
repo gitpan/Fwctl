@@ -17,7 +17,7 @@ use vars qw( $VERSION $PORTFW $IPCHAINS );
 use Carp;
 
 BEGIN {
-  $VERSION = '0.25';
+  $VERSION = '0.26';
 
   eval { use IPChains::PortFW; new IPChains::PortFW; };
   $PORTFW = 1 unless $@;

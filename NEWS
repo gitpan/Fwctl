@@ -1,3 +1,12 @@
+Fwctl NEWS -- History of User-Visible Changes.  May 08 2000
+
+* Changes in fwctl 0.26
+
+* Bug fixes:
+    - fwctllog was skipping packets which were logged on chains with
+      an hyphen (-) in them.
+
+
 Fwctl NEWS -- History of User-Visible Changes.  Feb 17 2000
 
 * Changes in fwctl 0.25

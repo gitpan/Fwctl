@@ -1,3 +1,23 @@
+2000-05-08  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* TAG: FWCTL_0_26
+
+	* Fwctl.spec (Version): Updated version number to 0.26.
+
+	* Fwctl.pm (VERSION): Updated version number to 0.26
+
+	* fwctllog (read_records): Throw exception when it is not
+	  possible to parse a Packet log: line.
+
+	* NEWS : Added user changes for 0.26.
+
+	* TODO: Added list of requested enhancements.
+
+2000-05-05  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* fwctllog : Fixe parsing of chains with - in it. 
+	(Thanks Bernd Eckenfels).
+
 2000-02-17  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
 
 	* TAG: FWCTL_0_25_1

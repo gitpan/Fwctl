@@ -184,8 +184,8 @@ sub account_rules {
 
 	  acct_ip_ruleset( $port, $src, $src_if, $dst, $dst_if, MASQ );
       } else {
-	  accept_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if,
-			      $masq );
+	  acct_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if,
+			    $masq );
       }
   }
 }
