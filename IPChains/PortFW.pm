@@ -3,12 +3,14 @@
 #
 #    This file is part of Fwctl.
 #
-#    Author: Francis J. Lacoste <francis@iNsu.COM>
+#    Author: Francis J. Lacoste <francis.lacoste@iNsu.COM>
 #
 #    Copyright (C) 1999,2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
-#    it under the terms same terms as perl itself.
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
 #
 package IPChains::PortFW;
 
@@ -21,7 +23,7 @@ use vars qw( $VERSION $IPMASQADM );
 
 BEGIN {
 
-  ($VERSION) = '$Revision: 1.3 $' =~ /Revision: ([0-9.]+)/;
+  ($VERSION) = '$Revision: 1.4 $' =~ /Revision: ([0-9.]+)/;
 
 }
 
@@ -293,7 +295,7 @@ $portfw->append;
 
 =head1 AUTHOR
 
-Francis J. Lacoste <francis@insu.com>
+Francis J. Lacoste <francis.lacoste@insu.com>
 
 =head1 COPYRIGHT
 
@@ -301,7 +303,9 @@ Copyright (C) iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
-it under the terms as perl itself.
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
 
 =head1 SEE ALSO
 

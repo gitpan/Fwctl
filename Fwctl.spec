@@ -1,19 +1,15 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.27
+Version: 0.28
 Release: 1i
 Source: http://iNDev.iNsu.COM/sources/%{name}-%{version}.tar.gz
-Copyright: GPL or Artistic License
+Copyright: GPL
 Group: Applications/System
 Prefix: /usr
 URL: http://iNDev.iNsu.COM/Fwctl/
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 BuildArchitectures: noarch
 Prereq: /sbin/chkconfig
-Provides: perl(IPChains::PortFW) = 0.5
-Requires: perl, perl(Net::IPv4Addr) >= 0.09
-Requires: perl(IPChains) >= 0.5, ipchains >= 1.3.8
-Requires: perl(IPChains::PortFW)
 
 %description
 Fwctl is a module to configure the Linux kernel packet filtering firewall
@@ -23,9 +19,7 @@ a powerful report generation utility.
 
 %prep
 %setup -q
-# Update all path to the perl interpreter
-find -type f -exec sh -c 'if head -c 100 $0 | grep -q "^#!.*perl"; then \
-		perl -p -i -e "s|^#!.*perl|#!/usr/bin/perl|g" $0; fi' {} \;
+%fix_perl_path
 
 %build
 perl Makefile.PL 
@@ -51,16 +45,8 @@ for packlist in `find $RPM_BUILD_ROOT -name '.packlist'`; do
 	rm -f $packlist.old
 done
 
-# Make a file list
-find $RPM_BUILD_ROOT -type d -path '*/usr/lib/perl5/site_perl/5.005/*' \
-    -not -path '*/auto' -not -path "*/*-linux" -not -path '*/IPChains' | \
-    sed -e "s!$RPM_BUILD_ROOT!%dir !" > %{name}-file-list
-    
-find $RPM_BUILD_ROOT/usr -not -type d | \
-	grep -v perllocal.pod | \
-	sed -e "s|$RPM_BUILD_ROOT||g" >> %{name}-file-list
-
-perl -n -i -e 'print "%doc " if m!man/man|\.pod!; print; ' %{name}-file-list
+BuildDirList > %pkg_file_list
+BuildFileList >> %pkg_file_list
 
 umask 007
 mkdir -p $RPM_BUILD_ROOT/{usr/sbin,etc/{fwctl,cron.d,rc.d/init.d,logrotate.d}}
@@ -88,7 +74,7 @@ rm -fr $RPM_BUILD_ROOT
 
 %files -f %{name}-file-list
 %defattr(-,root,root)
-%doc README ChangeLog TODO NEWS
+%doc README ChangeLog TODO NEWS THANKS
 %config /etc/rc.d/init.d/fwctl
 %dir /etc/fwctl
 %config(missingok) /etc/logrotate.d/fwctl
@@ -99,6 +85,11 @@ rm -fr $RPM_BUILD_ROOT
 %config(noreplace) %attr(640,root,root) /var/log/fwctl_*
 
 %changelog
+* Tue Aug 01 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.28-1i]
+- Updated to version 0.28.
+- Updated spec file to use new macros.
+
 * Sun Jun 11 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.27-1i]
 - Updated to version 0.27.

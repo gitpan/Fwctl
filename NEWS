@@ -1,3 +1,16 @@
+Fwctl NEWS -- History of User-Visible Changes. August 01 2000
+
+* Changes in fwctl 0.28
+
+* Now distributed under GPL only.
+
+* New service definitions for Cytrix ICA (Fwctl::Services::ica).
+
+* Bugs fixed:
+    - Masquerading module wasn't loaded when port forwarding was turned on.
+    - Requires Net::IPv4Addr 0.10 for security.
+
+
 Fwctl NEWS -- History of User-Visible Changes.  June 11 2000
 
 * Changes in fwctl 0.27

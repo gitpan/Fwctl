@@ -5,10 +5,12 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
-#    it under the terms same terms as perl itself.
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
 #
 package Fwctl::Services::ipsec;
 
@@ -79,7 +81,7 @@ sub accept_rules {
   accept_ip_ruleset( $esp, $dst, $dst_if, $src, $src_if,
 		     $masq, $options->{portfw} );
 
-  if ($options->{masq}) {
+  if ($options->{masq} || $options->{portfw} ) {
       system ( "/sbin/modprobe", "ip_masq_ipsec" ) == 0
 	or carp __PACKAGE__, ": couldn't load ip_masq_ipsec: $?\n";
   }
@@ -137,11 +139,17 @@ See ftp://ftp.rubyriver.com/pub/jhardin/masquerade/ for informations.
 
 =head1 AUTHOR
 
-Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
+Francis J. Lacoste <francis.lacoste@iNsu.COM>
+
+=head1 COPYRIGHT
+
+Copyright (c) 1999,2000 iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
-it under the terms as perl itself.
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
 
 =head1 SEE ALSO
 

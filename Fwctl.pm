@@ -8,7 +8,10 @@
 #    Copyright (c) 1999,2000 iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
-#    it under the terms same terms as perl itself.
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
 
 package Fwctl;
 
@@ -17,7 +20,7 @@ use vars qw( $VERSION $PORTFW $IPCHAINS );
 use Carp;
 
 BEGIN {
-    $VERSION = '0.27';
+    $VERSION = '0.28';
 
     eval { use IPChains::PortFW; new IPChains::PortFW; };
     $PORTFW = 1 unless $@;
@@ -29,7 +32,7 @@ BEGIN {
 }
 
 # Preloaded methods go here.
-use Net::IPv4Addr qw(:all);
+use Net::IPv4Addr 0.10 qw(:all);
 use Getopt::Long;
 use Fcntl qw( :flock );
 use IPChains;
@@ -1413,11 +1416,26 @@ standard services for details.
 
 =head1 AUTHOR
 
-Copyright (c) 1999,2000 Francis J. Lacoste iNsu Innovations Inc.
+Francis J. Lacoste <francis.lacoste@iNsu.COM>
+
+=head1 COPYRIGHT
+
+Copyright (c) 1999,2000 iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
-it under the terms as perl itself.
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, you can get one at
+http://www.gnu.org/copyleft/gpl.html
 
 =head1 SEE ALSO
 

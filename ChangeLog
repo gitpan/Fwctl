@@ -1,3 +1,44 @@
+2000-08-04  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Tag: FWCTL_0_28
+	
+	* fwctllog: Only warn (don't die) when encoutering an
+	invalid syslog line.
+
+2000-08-01  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* test.pl: Added test for ICA module.
+
+	* Fwctl/Services/ica.pm: New ICA module.
+
+	* README: Added requirements for Net::IPv4Addr 0.10.
+
+	* NEWS: News for 0.28.
+
+	* Fwctl.spec: Updated for version 0.28.
+	Updated spec file to use new macros.
+
+	* Fwctl.pm (VERSION): Changed version number to 0.28.
+	Required Net::IPv4Addr 0.10.
+
+	* Changed copyright to GPL only.
+	
+	* test-data/in/deny-snmp-INT_NET-nolog: Removed unessary 
+	rules because of Net::IPv4Addr 0.10
+
+	* test-data/in/deny-netbios-INT_NET-nolog: Removed unessary 
+	rules because of Net::IPv4Addr 0.10
+
+2000-06-20  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Copyright: put under GPL only for ipchains.
+
+	* Fwctl/Services/ipsec.pm (accept_rules): Load module
+	when portfw is turned on.
+
+	* Fwctl/Services/pptp.pm (accept_rules): Load module
+	when portfw is turned on.
+
 2000-06-11  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
 
 	* TAG: FWCTL_0_27

@@ -173,10 +173,11 @@ my %SERVICE_TESTS = (
 		     "accept-telnet-VPN_CLIENT1-VPN1_IP"     => "accept telnet -src VPN_CLIENT1 -dst VPN1_IP",
 		     "accept-telnet-VPN_CLIENT2-VPN2_IP"     => "accept telnet -src VPN_CLIENT2 -dst VPN2_IP",
 		     "accept-telnet-VPN_CLIENT2-INT_NET"     => "accept telnet -src VPN_CLIENT2 -dst INT_NET",
+		     "accept-ica-INT_NET-INTERNET_HOST-masq"     => "accept ica -src INT_NET -dst INTERNET_HOST -masq",
+		     "accept-ica-INTERNET-INT_HOST-portfw-nobrowse"     => "accept ica -src INTERNET -dst INT_HOST --portfw --nobrowse",
 		    );
 
-#%SERVICE_TESTS = ( 
-#		 );
+#%SERVICE_TESTS = ();
 for my $name ( sort keys %SERVICE_TESTS) {
   my $rule = $SERVICE_TESTS{$name};
   open RULES, ">rules" 
