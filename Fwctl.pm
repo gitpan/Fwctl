@@ -20,22 +20,22 @@ BEGIN {
   @ISA = qw(Exporter);
 
   @EXPORT = qw();
-  $VERSION = '0.20';
+  $VERSION = '0.21';
 }
 
 # Preloaded methods go here.
-use Network::IPv4Addr qw(:all);
+use Net::IPv4Addr qw(:all);
 use Getopt::Long;
 use Fcntl qw( :flock );
 use Carp;
 
 # Constants
-use constant INTERFACES_FILE => '/etc/sysconfig/fwctl/interfaces';
-use constant ALIASES_FILE   => '/etc/sysconfig/fwctl/aliases';
-use constant RULES_FILE     => '/etc/sysconfig/fwctl/rules';
+use constant INTERFACES_FILE => '/etc/fwctl/interfaces';
+use constant ALIASES_FILE   => '/etc/fwctl/aliases';
+use constant RULES_FILE     => '/etc/fwctl/rules';
 
-use constant SERVICES_DIR   => [ "/etc/sysconfig/fwctl/services" ];
-use constant ACCOUNTING_FILE => '/var/log/ip_acct/acct';
+use constant SERVICES_DIR   => [ "/etc/fwctl/services" ];
+use constant ACCOUNTING_FILE => '/var/log/fwctl_acct';
 
 
 my @REQUIRED_METHODS = qw( valid_options block_rules account_rules accept_rules );
@@ -150,24 +150,23 @@ sub service {
 	return undef;
       }
     $self->{services}{$name} =
-      eval qq{
-package Fwctl::Services::$name;
+      eval "package Fwctl::Services::$name;" . q{
 
-use vars qw(\@ISA);
+use vars qw(@ISA);
 use Fwctl::Services::tcp_service;
 
-BEGIN { \@ISA = qw(Fwctl::Services::tcp_service); }
+BEGIN { @ISA = qw(Fwctl::Services::tcp_service); }
 
 sub new {
-  my \$proto = shift;
-  my \$class = ref(\$proto) || \$proto;
-  my \$self  = \$class->SUPER::new(\@_);
-  \$self->{port} = $port;
-  bless \$self,\$class;
+  my $proto = shift;
+  my $class = ref($proto) || $proto;
+  my $self  = $class->SUPER::new(@_);
+  $self->{port} = $port;
+  bless $self,$class;
 }
 
-new Fwctl::Services::$name;
-};
+} . "new Fwctl::Services::$name;";
+
 	if ($@) {
 	    carp __PACKAGE__, ": error while defining tcp_service $name: $@";
 	    return undef;
@@ -489,6 +488,36 @@ sub stop {
   $loopback->insert( "output" );
 }
 
+sub flush_chains {
+  my $self = shift;
+
+  # Dump old account
+  $self->dump_acct;
+
+  # Sets default policies
+  my $fwctl = IPChains->new( Rule => 'ACCEPT' );
+  $fwctl->set_policy( "input" );
+  $fwctl->set_policy( "forward" );
+  $fwctl->set_policy( "output" );
+
+  # Flush standard chains
+  $fwctl->clopts;
+  $fwctl->flush( "input" );
+  $fwctl->flush( "output" );
+  $fwctl->flush( "forward" );
+
+  # Flush the user chains
+  for ($fwctl->list_chains) {
+    $fwctl->flush( $_ );
+  }
+
+  # ... and delete them
+  for ($fwctl->list_chains) {
+    $fwctl->del_chain( $_ );
+  }
+
+}
+
 # Read the interface specifications
 sub read_interfaces {
   my $self = shift;
@@ -722,6 +751,7 @@ sub read_rules {
     $ipchains_opts{Mark}   = $options{mark} if $options{mark};
     $ipchains_opts{Log}    = 1		    if $options{log};
     $ipchains_opts{Output} = $options{copy} if $options{copy};
+    $options{ipchains} = \%ipchains_opts;
 
     # Name of accounting chain
     my $chain = sprintf 'acct%04d', $self->{account}++
@@ -732,7 +762,6 @@ sub read_rules {
 			     action  => $action,
 			     service => $service,
 			     options => \%options,
-			     ipchains_opts => \%ipchains_opts,
 			     src     => \@src,
 			     dst     => \@dst,
 			     ($action eq "ACCOUNT" ? 
@@ -741,16 +770,18 @@ sub read_rules {
 
     # Add automatic accounting rule
     if ($options{account}) {
+	my $new_options = { %options };
+	# No need to log, copy or output packets twice.
+	delete $new_options->{ipchains};
       push @{$self->{rules}}, {
 			       action	     => "ACCOUNT",
 			       service	     => $service,
-			       options	     => \%options,
-			       # No need to log, copy or mark twice
-			       ipchains_opts  => {},
+			       options	     => $new_options,
 			       src	     => \@src,
 			       dst	     => \@dst,
 			       account_chain => $chain,
 			      };
+
     }
   }
   close RULES;
@@ -861,7 +892,7 @@ files that contains the services policy for the firewall.
 
 =head2 TOPOLOGY
 
-The F<interfaces> file (default to F</etc/sysconfig/fwctl/interfaces>)
+The F<interfaces> file (default to F</etc/fwctl/interfaces>)
 describes your firewall topology. This is a text file in which comments
 (starting by a # and continuing until the end of line) and blank lines are
 ignored.
@@ -1130,7 +1161,7 @@ the unique name generated internally.
 
 =head1 ACCOUNTING
 
-Accounting data is dump to the file F</var/log/ip_acct/acct>. You
+Accounting data is dump to the file F</var/log/fwctl_acct>. You
 should run periodically the B<fwctl> program to dump the accumulated
 accounted data.
 
@@ -1187,7 +1218,7 @@ it under the terms as perl itself.
 
 =head1 SEE ALSO
 
-fwctl(8) Fwctl::RuleSet(3) IPChains(3) Network::IPv4Addr(3)
+fwctl(8) Fwctl::RuleSet(3) IPChains(3) Net::IPv4Addr(3)
 Fwctl::Services::all(3) Fwctl::Services::dhcp(3) Fwctl::Services::ftp(3)
 Fwctl::Services::http(3) Fwctl::Services::hylafax(3) 
 Fwctl::Services::netbios(3)  Fwctl::Services::ntp(3)

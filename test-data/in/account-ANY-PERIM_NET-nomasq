@@ -1,23 +1,23 @@
 Chain acct-in :
 Chain acct-fwd :
 Chain acct-out :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 acct0000   tcp  ------ 0xFF 0x00  lo                             0.0.0.0/0             192.168.10.0/24       1024:65535 ->   23
-    0     0 acct0000   tcp  ------ 0xFF 0x00  eth0                           0.0.0.0/0             192.168.10.0/24       1024:65535 ->   23
-    0     0 acct0000   tcp  !y---- 0xFF 0x00  lo                             192.168.10.0/24       0.0.0.0/0             23 ->   1024:65535
-    0     0 acct0000   tcp  !y---- 0xFF 0x00  *                              192.168.10.0/24       0.0.0.0/0             23 ->   1024:65535
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+acct0000   tcp  ------ 0xFF 0x00  lo                             0.0.0.0/0             192.168.10.0/24       1024:65535 ->   23
+acct0000   tcp  ------ 0xFF 0x00  eth0                           0.0.0.0/0             192.168.10.0/24       1024:65535 ->   23
+acct0000   tcp  !y---- 0xFF 0x00  lo                             192.168.10.0/24       0.0.0.0/0             23 ->   1024:65535
+acct0000   tcp  !y---- 0xFF 0x00  *                              192.168.10.0/24       0.0.0.0/0             23 ->   1024:65535
 Chain tcp-in :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 syn-in     tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
-    0     0 ack-in     tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+syn-in     tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+ack-in     tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
 Chain tcp-fwd :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 syn-fwd    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
-    0     0 ack-fwd    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+syn-fwd    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+ack-fwd    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
 Chain tcp-out :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 syn-out    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
-    0     0 ack-out    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+syn-out    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+ack-out    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
 Chain udp-in :
 Chain udp-fwd :
 Chain udp-out :
@@ -34,5 +34,5 @@ Chain ack-in :
 Chain ack-fwd :
 Chain ack-out :
 Chain acct0000 :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 -          all  ------ 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             n/a
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+-          all  ------ 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             n/a

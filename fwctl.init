@@ -29,13 +29,17 @@ case "$1" in
 	rm -f /var/lock/subsys/fwctl
 	;;
   check)
-	fwctl check
+        action "WARNING: Flushing all firewall rules" fwctl flush
 	;;
+
+  flush)
+       fwctl flush
+       ;;
   restart|reload)
 	action "Updating IP packet filters" fwctl restart
 	;;
   *)
-        echo "Usage: fwctl {start|stop|check|restart|reload}"
+        echo "Usage: fwctl {start|stop|check|restart|flush|reload}"
         exit 1
 esac
 

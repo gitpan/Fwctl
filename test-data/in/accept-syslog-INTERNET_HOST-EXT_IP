@@ -2,20 +2,20 @@ Chain acct-in :
 Chain acct-fwd :
 Chain acct-out :
 Chain tcp-in :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 syn-in     tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
-    0     0 ack-in     tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+syn-in     tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+ack-in     tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
 Chain tcp-fwd :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 syn-fwd    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
-    0     0 ack-fwd    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+syn-fwd    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+ack-fwd    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
 Chain tcp-out :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 syn-out    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
-    0     0 ack-out    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+syn-out    tcp  -y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
+ack-out    tcp  !y---- 0xFF 0x00  *                              0.0.0.0/0             0.0.0.0/0             * ->   *
 Chain udp-in :
- pkts bytes target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
-    0     0 ACCEPT     udp  ------ 0xFF 0x00  ppp0                           10.10.10.10           172.16.1.1            514 ->   514
+target     prot opt    tosa tosx  ifname     mark       outsize  source                destination           ports
+ACCEPT     udp  ------ 0xFF 0x00  ppp0                           10.10.10.10           172.16.1.1            514 ->   514
 Chain udp-fwd :
 Chain udp-out :
 Chain icmp-in :

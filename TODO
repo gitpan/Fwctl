@@ -11,6 +11,8 @@ Future enhancements to Fwctl
 - User space daemon to do IDS and stateful filtering
   using the fwmonitor device.
 
+  (This will probably wait for new netfilters module)
+
 - Have a way to generate all the rules without setting them,
   to retreive the current settings and determine what need
   to be changed rather, than the actual tear down, rebuild.

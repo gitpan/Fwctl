@@ -20,7 +20,7 @@ sub usage() {
 die <<EOFU;
 usage: fwtcl [--aliases file] [ --interfaces file ] [--rules file]
 	     [--services-dir dir ]+ [--accounting-file file ]
-	(start|stop|restart|dump-acct|check|dump-config)
+	(start|stop|restart|flush|dump-acct|check|dump-config)
 EOFU
 }
 my %opts = ();
@@ -61,6 +61,11 @@ for ( $ARGV[0] ) {
     $fwctl->stop;
     last ARGS;
   };
+  /flush/ && do {
+    my $fwctl = new Fwctl( %fwopts );
+    $fwctl->flush_chains;
+    last ARGS;
+  };
   /dump-acct/ && do {
     my $fwctl = new Fwctl( %fwopts );
     $fwctl->dump_acct;
@@ -82,7 +87,7 @@ fwctl - Program to configure the Linux kernel firewall.
 
 fwtcl	[--aliases file] [ --interfaces file ] [--rules file]
 	[--services-dir dir ]+ [--accounting-file file ]
-	(start|stop|restart|dump-acct|check|dump-config)
+	(start|stop|flush|restart|dump-acct|check|dump-config)
 
 =head1 DESCRIPTION
 
@@ -100,6 +105,10 @@ according to the rules of the rules file.
 =item stop
 
 Reset the firewall and allow only loopback IP traffic.
+
+=item flush
+
+Remove all Chains and Rules
 
 =item restart
 
@@ -135,22 +144,22 @@ the configuration object is printed on STDOUT using Data::Dumper.
 =item aliases
 
 Specifies the path to the F<aliases> file.
-Default is F</etc/sysconfig/fwctl/aliases>.
+Default is F</etc/fwctl/aliases>.
 
 =item interfaces
 
 Specifies the path to the F<interfaces> file.
-Default is F</etc/sysconfig/fwctl/interfaces>
+Default is F</etc/fwctl/interfaces>
 
 =item rules
 
 Specifies the path to the F<rules> file.
-Default is F</etc/sysconfig/fwctl/rules>
+Default is F</etc/fwctl/rules>
 
 =item services-dir
 
 Sets the search patch for service modules. The default is to look in
-I<PERLPATH> and F</etc/sysconfig/services/fwctl>.
+I<PERLPATH> and F</etc/fwctl/services/>.
 Using this option removes the last  directory from the search path
 and adds the directory specified as option. Note that the default perl
 module path are always searched.
@@ -160,7 +169,7 @@ This option may be specified multiple times.
 =item accounting-file
 
 Specifies the path to the accounting file.
-Default is F</var/log/ip_acct/acct>.
+Default is F</var/log/fwctl_acct>.
 
 =back
 

@@ -3,7 +3,7 @@ use Test;
 
 $| = 1;
 
-BEGIN { plan tests => 106; }
+BEGIN { plan tests => 116; }
 
 use Fwctl;
 use Fwctl::RuleSet;
@@ -52,9 +52,12 @@ system( "rm -fr test-data/out/*" );
 system( "ipchains-save > saved-chains" ) == 0
   or die "couldn't save current chains: $?\n";
 
+my $shellcmd = q{ ipchains -L -v -n |tail +25 | perl -pe 's|\(.*\)||; s|^ +\d+ +\d+ ||; s|^ pkts bytes ||' };
+
 my @SRC	    = qw( ANY INT_IP INT_NET INT_REM_HOST      );
 my @DST	    = qw( ANY PERIM_IP PERIM_NET INTERNET_HOST );
 my @POLICY  = qw( accept account deny );
+#@POLICY = ();
 for my $pol ( @POLICY ) {
   for my $src ( @SRC ) {
     for my $dst ( @DST ) {
@@ -77,7 +80,7 @@ for my $pol ( @POLICY ) {
 	close RULES;
 	$fwctl = new Fwctl( %fwopts );
 	$fwctl->configure;
-	system( "ipchains -L -v -n |tail +25 |sed -e 's|(.*)||' > test-data/out/$pol-$src-$dst-$masq" ) == 0
+	system( "$shellcmd > test-data/out/$pol-$src-$dst-$masq" ) == 0
 	  or die "error dumping chains configuration: $?\n";
 	my $result = system( "cmp", "-s", "test-data/out/$pol-$src-$dst-$masq",
 			     "test-data/in/$pol-$src-$dst-$masq" );
@@ -116,8 +119,16 @@ my %SERVICE_TESTS = (
 		     "accept-syslog-INT_HOST-INT_IP" => "accept syslog -src INT_HOST -dst INT_IP -client",
 		     "accept-syslog-INTERNET_HOST-EXT_IP" => "accept syslog -src INTERNET_HOST -dst EXT_IP",
 		     "accept-hylafax-INT_NET-INT_IP" => "accept hylafax -src INT_NET -dst INT_IP",
+		     "accept-telnet-INT_NET_INTERNET-log" => "accept telnet -src INT_NET -dst INTERNET -log",
+		     "accept-ping-INTERNET-EXT_IP-account-log" => "accept ping -src INTERNET -dst EXT_IP -log -account -name monitoring",
+		  "accept-hylafax-INT_NET-INT_IP"   => "accept hylafax -src INT_NET -dst INT_IP",
+		  "accept-pcanywhere-INT_HOST-INTERNET_HOST" => "accept pcanywhere -src INT_HOST -dst INTERNET_HOST",
+		  "accept-lpd-INT_HOST-INTERNET_HOST"	=> "accept lpd -src INT_HOST -dst INTERNET_HOST",
+		  "accept-telnet-INT_HOST-INT_REM_HOST" => "accept telnet -src INT_HOST -dst INT_REM_HOST",
 		    );
 
+#%SERVICE_TESTS = ( 
+#		 );
 for my $name ( sort keys %SERVICE_TESTS) {
   my $rule = $SERVICE_TESTS{$name};
   open RULES, ">rules" 
@@ -126,7 +137,7 @@ for my $name ( sort keys %SERVICE_TESTS) {
   close RULES;
   $fwctl = new Fwctl( %fwopts );
   $fwctl->configure;
-  system( "ipchains -L -v -n |tail +25 |sed -e 's|(.*)||' > test-data/out/$name" ) == 0
+  system( "$shellcmd > test-data/out/$name" ) == 0
     or die "error dumping chains configuration: $?\n";
   my $result = system( "cmp", "-s", "test-data/out/$name", "test-data/in/$name" );
   ok( $result, 0 );

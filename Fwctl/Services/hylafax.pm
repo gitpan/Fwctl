@@ -10,14 +10,20 @@
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
 #
-package Fwctl::Services::ftp;
+package Fwctl::Services::hylafax;
 
 use strict;
 
 use vars qw( @ISA );
 
+use Fwctl::RuleSet qw( :ports);
+use Fwctl::Services::ftp;
+
 use Carp;
-@ISA = qw( Fwctl::Services::hylafax );
+
+BEGIN {
+    @ISA = qw( Fwctl::Services::ftp );
+}
 
 sub new {
   my $proto = shift;

@@ -1,14 +1,14 @@
 Fwctl
 =====
 
-Version: 0.20
+Version: 0.21
 
 Requirements
 ------------
 kernel 2.2
 ipchains 1.3.8
 IPChains.pm 0.5
-Network::IPv4Addr.pm 0.05
+Net::IPv4Addr.pm 0.06 or later
 
 Description
 -----------
@@ -60,9 +60,9 @@ the following files manually, according to your distribution layout :
 
 The default path to the configuration files are
 
-	/etc/sysconfig/fwctl/aliases
-	/etc/sysconfig/fwctl/interfaces
-	/etc/sysconfig/fwctl/rules
+	/etc/fwctl/aliases
+	/etc/fwctl/interfaces
+	/etc/fwctl/rules
 
 Testing
 -------

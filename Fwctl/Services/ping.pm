@@ -74,12 +74,12 @@ sub account_rules {
   # Build prototype rule
   my ($ping,$pong) = $self->prototypes( $target, $options );
 
-  accept_ip_ruleset( $ping, $src, $src_if, $dst, $dst_if,
-		    $options->{masq} ? MASQ : NOMASQ
+  acct_ip_ruleset( $ping, $src, $src_if, $dst, $dst_if,
+		   $options->{masq} ? MASQ : NOMASQ
 		  );
-  accept_ip_ruleset( $pong, $dst, $dst_if, $src, $src_if,
-		    $options->{masq} ? UNMASQ : NOMASQ
-		  );
+  acct_ip_ruleset( $pong, $dst, $dst_if, $src, $src_if,
+		   $options->{masq} ? UNMASQ : NOMASQ
+		 );
 }
 
 sub valid_options {
@@ -95,9 +95,9 @@ Fwctl::Services::ping - Fwctl module to handle the ping service.
 
 =head1 SYNOPSIS
 
-    accept   all -src INTERNAL_NET -dst INTERNET -masq
-    deny    all -dst BAD_GUYS_NET	--account
-    account all -src INTERNET -dst FIREWALL
+    accept  ping -src INTERNAL_NET -dst INTERNET -masq
+    deny    ping -dst BAD_GUYS_NET	--account
+    account ping -src INTERNET -dst FIREWALL
 
 =head1 DESCRIPTION
 

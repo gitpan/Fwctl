@@ -1,16 +1,16 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.20
+Version: 0.21
 Release: 1i
 Source: http://iNDev.iNsu.COM/Fwctl/%{name}-%{version}.tar.gz
 Copyright: GPL or Artistic License
 Group: Development/Libraries/Perl
 Prefix: /usr
-URL: http://iNDev.iNsu.COM/Fwctl
+URL: http://iNDev.iNsu.COM/Fwctl/
 BuildRoot: /var/tmp/%{name}-%{version}
 BuildArchitectures: noarch
 Prereq: /sbin/chkconfig
-Requires: perl Network-IPv4Addr
+Requires: perl Net-IPv4Addr
 
 %description
 Fwctl is a module to configure the Linux kernel packet filtering firewall
@@ -42,14 +42,12 @@ mkdir -p $RPM_BUILD_ROOT/usr/man/man8
 install -m644 fwctl.8 $RPM_BUILD_ROOT/usr/man/man8
 
 umask 007
-mkdir -p $RPM_BUILD_ROOT/{usr/sbin,etc/{sysconfig/fwctl,cron.hourly,rc.d/init.d}}
+mkdir -p $RPM_BUILD_ROOT/{usr/sbin,etc/{fwctl,cron.hourly,rc.d/init.d,logrotate.d}}
 install -m 750 fwctl $RPM_BUILD_ROOT/usr/sbin
 install -m 750 fwctl.init $RPM_BUILD_ROOT/etc/rc.d/init.d/fwctl
-install -m 750 fwctl.cron $RPM_BUILD_ROOT/etc/cron.hourly/ip_acct
-install -m 640 etc/* $RPM_BUILD_ROOT/etc/sysconfig/fwctl
-
-mkdir -p $RPM_BUILD_ROOT/var/log/ip_acct
-chmod 750 $RPM_BUILD_ROOT/var/log/ip_acct
+install -m 750 fwctl.cron $RPM_BUILD_ROOT/etc/cron.hourly/fwctl_acct
+install -m 750 fwctl.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/fwctl
+install -m 640 etc/* $RPM_BUILD_ROOT/etc/fwctl
 
 # Fix packing list
 for packlist in `find $RPM_BUILD_ROOT -name '.packlist'`; do
@@ -59,9 +57,14 @@ for packlist in `find $RPM_BUILD_ROOT -name '.packlist'`; do
 done
 
 # Make a file list
+find $RPM_BUILD_ROOT -type d -path '*/usr/lib/perl5/site_perl/5.005/*' \
+    -not -path '*/auto' -not -path "*/*-linux" | \
+    sed -e "s!$RPM_BUILD_ROOT!%dir !" > %{name}-file-list
+    
 find $RPM_BUILD_ROOT/usr/lib/perl5 -type f -o -type l | \
 	grep -v perllocal.pod | \
-	sed -e "s|$RPM_BUILD_ROOT||g" > %{name}-file-list
+	sed -e "s|$RPM_BUILD_ROOT||g" >> %{name}-file-list
+
 perl -n -i -e 'print "%doc " if m!man/man|\.pod!; print; ' %{name}-file-list
 
 %post 
@@ -83,14 +86,18 @@ rm -fr $RPM_BUILD_ROOT
 /usr/sbin/fwctl
 /usr/man/man8/fwctl.8
 %config /etc/rc.d/init.d/fwctl
-%dir /etc/sysconfig/fwctl
-%config(noreplace) /etc/sysconfig/fwctl/aliases
-%config(noreplace) /etc/sysconfig/fwctl/interfaces
-%config(noreplace) /etc/sysconfig/fwctl/rules
-%dir /var/log/ip_acct
-%config /etc/cron.hourly/ip_acct
+%dir /etc/fwctl
+%config(missingok) /etc/logrotate.d/fwctl
+%config(noreplace) /etc/fwctl/aliases
+%config(noreplace) /etc/fwctl/interfaces
+%config(noreplace) /etc/fwctl/rules
+%config /etc/cron.hourly/fwctl_acct
 
 %changelog
+* Tue Oct 19 1999  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.21-1i]
+- Updated to version 0.21.
+
 * Wed Sep 15 1999  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.20-1i]
 - Updated to version 0.20.

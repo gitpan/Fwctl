@@ -15,7 +15,7 @@ package Fwctl::Services::timed;
 use strict;
 
 use Fwctl::RuleSet qw(:ip_rulesets :udp_rulesets :masq :ports);
-use Network::IPv4Addr qw(ipv4_in_network);
+use Net::IPv4Addr qw(ipv4_in_network);
 use IPChains;
 
 sub new {

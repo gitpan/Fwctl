@@ -6,7 +6,7 @@ WriteMakefile(
 	      AUTHOR	   => 'Francis J. Lacoste <francis.lacoste\@iNsu.Com>',
 	      ABSTRACT_FROM => 'Fwctl.pm',
 	      VERSION_FROM  => 'Fwctl.pm', # finds $VERSION
-	      PREREQ_PM	    => { Network::IPv4Addr => 0.05,
+	      PREREQ_PM	    => { Net::IPv4Addr => 0.06,
 				 IPChains => 0,
 			       },
 );

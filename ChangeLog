@@ -1,3 +1,38 @@
+1999-10-19  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Fwctl/Services/rsh.pm: Documentation fixes.
+	
+	* Fwctl/Services/redirect.pm: New service definition.
+	
+	* Fwctl/Services/lpd.pm: New service definition.
+
+	* Fwctl/Services/pcanywhere.pm: New service definition.
+	
+	* Fwctl/Services/hylafax.pm: Properly inherits from ftp now.
+
+	* Fwctl/Services/ping.pm (account_rules): Was calling
+	accept_ip_ruleset instead of acct_ip_ruleset.
+
+	* test.pl: Removed bytes and packets counters from regression test.
+	Added new tests.
+	
+	* Several files:  Network::IPv4Addr got renamed to Net::IPv4Addr.
+
+	* fwctl.logrotate: New file for logrotate.
+
+	* fwctl (main): Added flush command which resets the firewall.
+
+	* Fwctl.pm (flush_chains): Added flush_chains method which
+	reset the packet filters to ACCEPT everything. 
+	(Thanks to Bernd Eckenfels <ecki@lina.inka.de>)
+	(global): Moved configuration under /etc rather than
+	/etc/sysconfig.
+	(read_rules): Services expect IPChains options in
+	$options->{options}.
+	
+	* debian/: Debian packaging b Bernd Eckenfels <ecki@lina.inka.de>.
+	
+
 1999-09-15  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
 	* TAG: FWCTL_0_20
 

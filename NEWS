@@ -1,0 +1,27 @@
+Fwctl NEWS -- history of user-visible changes.  19 Oct 1999
+
+* Changes in fwctl 0.21
+
+** Default directory for configuration files is now under /etc/fwctl
+
+** Default accounting files is now named fwctl_acct.
+
+** Fwctl now uses Net::IPv4Addr which was renamed from Network::IPv4Addr.
+
+** Hylafax services now works correctly.
+
+** Ping accounting doesn't fail. 
+
+** New services : pcanywhere.pm, lpd.pm, redirect.pm.
+
+** -log, -copy, -mark options now works as expected.
+
+** debian packaging by Bernd Eckenfels <ecki@lina.inka.de>
+
+** Added sample logrotate config file in RedHat package.
+
+** New flush commands.
+
+You can now reset the kernel packet filters by using the fwctl flush 
+commands. It deletes flush all rules, deletes all chains and sets the
+default policy to ACCEPT all.

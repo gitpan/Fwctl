@@ -1,5 +1,5 @@
 #
-#    timed.pm: Fwctl service module to handle the rsh protocol.
+#    rsh.pm: Fwctl service module to handle the rsh protocol.
 #
 #    This file is part of Fwctl.
 #
@@ -99,7 +99,7 @@ Fwctl::Services::rsh - Fwctl module to handle the rsh protocol.
 
 =head1 DESCRIPTION
 
-The rsh handles the protocol.
+The rsh module handles the remote shell protocol.
 
 =head1 AUTHOR
 

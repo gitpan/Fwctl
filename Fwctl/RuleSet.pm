@@ -14,7 +14,7 @@ package Fwctl::RuleSet;
 
 use strict;
 
-use Network::IPv4Addr qw( ipv4_in_network ipv4_broadcast ipv4_parse );
+use Net::IPv4Addr qw( ipv4_in_network ipv4_broadcast ipv4_parse );
 use IPChains;
 use Carp;
 

@@ -15,7 +15,7 @@ package Fwctl::Services::netbios;
 use strict;
 
 use Fwctl::RuleSet qw(:tcp_rulesets :udp_rulesets :ip_rulesets :masq :ports);
-use Network::IPv4Addr qw(ipv4_in_network);
+use Net::IPv4Addr qw(ipv4_in_network);
 use IPChains;
 
 sub new {

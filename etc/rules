@@ -38,7 +38,7 @@ accept all -src LOCAL_IP -dst LOCAL_IP
 #accept ping	     -src INTERNET  -dst EXT_IP -log -account -name monitoring
 #accept traceroute   -src INTERNET  -dst EXT_IP -log -account -name monitoring
 
-#accept ping	    -src INT_NET    -dst INT_IP
+#accept ping	     -src INT_NET   -dst INT_IP
 #accept traceroute   -src INT_NET   -dst INT_IP
 
 #accept ping	    -src EXT_IP	   -dst INTERNET
@@ -94,10 +94,15 @@ accept all -src LOCAL_IP -dst LOCAL_IP
 ##################################################################
 ## TIME SYNCHRONIZATION
 #accept ntp	    -src EXT_IP	    -dst NTP_SERVERS
+#accept ntp	    -src EXT_IP	    -dst NTP_SERVERS -client
 
 ##################################################################
 ## FAX SERVICES
 #accept hylafax	    -src INT_NET    -dst INT_IP
+
+##################################################################
+## INMANAGE
+#accept tcp_service -src INT_NET    -dst INT_IP -port 737
 
 ##################################################################
 ## REMOTE SUPPORT
