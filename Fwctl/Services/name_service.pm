@@ -67,20 +67,21 @@ sub accept_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my ($udp,$tcp) = $self->prototypes( $target, $options );
+
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   if ($options->{server}) {
     $udp->attribute( SourcePort => 'domain' );
     accept_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-			$options->{masq} ? MASQ : NOMASQ
-		      );
+			$masq, $options->{portfw} );
   }
   my $query = $options->{"query-port"} || $self->{query_port};
   $udp->attribute( SourcePort => $query );
   accept_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
   accept_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
 }
 
 sub account_rules {
@@ -88,20 +89,16 @@ sub account_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my ($udp,$tcp) = $self->prototypes( $target, $options );
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
   if ($options->{server}) {
     $udp->attribute( SourcePort => 'domain' );
-    acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-		      $options->{masq} ? MASQ : NOMASQ
-		    );
+    acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if, $masq );
   }
   my $query = $options->{"query-port"} || $self->{query_port};
   $udp->attribute( SourcePort => $query );
-  acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
-  acct_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+  acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if, $masq );
+  acct_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if, $masq );
 }
 
 sub valid_options {
@@ -110,6 +107,7 @@ sub valid_options {
 }
 
 1;
+
 =pod
 
 =head1 NAME

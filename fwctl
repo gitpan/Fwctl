@@ -62,8 +62,14 @@ for ( $ARGV[0] ) {
     last ARGS;
   };
   /flush/ && do {
-    my $fwctl = new Fwctl( %fwopts );
-    $fwctl->flush_chains;
+      eval {
+	  my $fwctl = new Fwctl( %fwopts );
+	  $fwctl->flush_chains;
+      };
+      if ( $@) {
+	  warn "fwctl: problems with configuration file. Current accounting stats will be lost:\n$@";
+	  Fwctl->really_flush_chains;
+      }
     last ARGS;
   };
   /dump-acct/ && do {

@@ -59,9 +59,10 @@ sub accept_rules {
 
   my ($fw) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
   accept_udp_ruleset( $fw, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
 }
 
 sub account_rules {
@@ -70,9 +71,9 @@ sub account_rules {
 
   my ($fw) = $self->prototypes( $target, $options );
 
-  acct_udp_ruleset( $fw, $src, $src_if, $dst, $dst_if,
-		    $options->{masq} ? MASQ : NOMASQ
-		  );
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+  acct_udp_ruleset( $fw, $src, $src_if, $dst, $dst_if, $masq );
 }
 
 sub valid_options {

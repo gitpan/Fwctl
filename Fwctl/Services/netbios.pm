@@ -72,20 +72,22 @@ sub accept_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my ($name,$dgm,$ssn) = $self->prototypes( $target, $options );
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
   if ( ipv4_in_network( $src, $dst ) ) {
     accept_ip_ruleset( $name, $src, $src_if, $src_if->{broadcast}, $dst_if,
-		       $options->{masq} ? MASQ : NOMASQ
-		     );
+		      $masq, $options->{portfw} );
   }
+
+
   accept_udp_ruleset( $name, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
+
   accept_udp_ruleset( $dgm, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
+
   accept_tcp_ruleset( $ssn, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
 
 }
 
@@ -94,20 +96,15 @@ sub account_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my ($name,$dgm,$ssn) = $self->prototypes( $target, $options );
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
   if ( ipv4_in_network( $src, $dst ) ) {
     accept_ip_ruleset( $name, $src, $src_if, $src_if->{broadcast}, $dst_if,
-		       $options->{masq} ? MASQ : NOMASQ
-		     );
+		       $masq );
   }
-  acct_udp_ruleset( $name, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
-  acct_udp_ruleset( $dgm, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
-  acct_tcp_ruleset( $ssn, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+  acct_udp_ruleset( $name, $src, $src_if, $dst, $dst_if, $masq );
+  acct_udp_ruleset( $dgm, $src, $src_if, $dst, $dst_if, $masq );
+  acct_tcp_ruleset( $ssn, $src, $src_if, $dst, $dst_if, $masq );
 
 }
 
@@ -117,6 +114,7 @@ sub valid_options {
 }
 
 1;
+
 =pod
 
 =head1 NAME

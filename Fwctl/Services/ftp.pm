@@ -14,7 +14,7 @@ package Fwctl::Services::ftp;
 
 use strict;
 
-use Fwctl::RuleSet qw(:tcp_rulesets :masq :ports);
+use Fwctl::RuleSet qw(:tcp_rulesets :ip_rulesets :masq :ports);
 use IPChains;
 use Carp;
 
@@ -72,12 +72,12 @@ sub block_rules {
   $do_port = $self->{pasv} unless defined $do_port;
 
   my ($ftp,$pasv,$port) = $self->prototypes( $target, $options );
-  block_tcp_ruleset( $ftp,	$src, $src_if, $dst, $dst_if );
+  block_tcp_ruleset( $ftp, $src, $src_if, $dst, $dst_if );
   if ( $do_pasv ) {
-    block_tcp_ruleset( $pasv,	$src, $src_if, $dst, $dst_if );
+    block_tcp_ruleset( $pasv, $src, $src_if, $dst, $dst_if );
   }
   if ($do_port ) {
-    block_tcp_ruleset( $port,	$dst, $dst_if, $src, $src_if  );
+    block_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if  );
   }
 }
 
@@ -91,24 +91,41 @@ sub accept_rules {
   $do_port = $self->{pasv} unless defined $do_port;
 
   my ($ftp,$pasv,$port) = $self->prototypes( $target, $options );
-  accept_tcp_ruleset( $ftp,	$src, $src_if, $dst, $dst_if,
-		      $options->{masq} ? MASQ : NOMASQ
-		    );
+
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
+  accept_tcp_ruleset( $ftp, $src, $src_if, $dst, $dst_if,
+		      $masq, $options->{portfw} );
 
   if ( $do_pasv ) {
-    accept_tcp_ruleset( $pasv,	$src, $src_if, $dst, $dst_if,
-			$options->{masq} ? MASQ : NOMASQ
-		      );
+      accept_tcp_ruleset( $pasv, $src, $src_if, $dst, $dst_if,
+			  $masq, $options->{portfw} );
   }
 
   if ( $do_port ) {
-    accept_tcp_ruleset( $port,	$dst, $dst_if, $src, $src_if,
-			$options->{masq} ? MASQ : NOMASQ
-		      );
-    if ($options->{masq}) {
-      system ( "/sbin/modprobe", "ip_masq_ftp" ) == 0
-	or carp __PACKAGE__, ": couldn't load ip_masq_ftp: $?\n";
-    }
+      if ( $masq & PORTFW ) {
+	  # We must portfw the ACK and not SYN. Thats why we must roll
+	  # our own
+	  accept_ip_ruleset( $port, $dst, $dst_if, $src, $src_if,
+			     UNPORTFW, $options->{portfw} );
+	  $port->attribute( 'SYN',  '!' );
+
+	  my $src_port = $port->attribute( 'SourcePort' );
+	  my $dst_port = $port->attribute( 'DestPort' );
+	  $port->attribute( 'DestPort',	    $src_port );
+	  $port->attribute( 'SourcePort',   $dst_port );
+
+	  accept_ip_ruleset( $port, $src, $src_if, $dst, $dst_if,
+			     PORTFW, $options->{portfw} );
+      } else {
+	  accept_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if,
+			      $masq );
+      }
+      if ($options->{masq}) {
+	  system ( "/sbin/modprobe", "ip_masq_ftp" ) == 0
+	    or carp __PACKAGE__, ": couldn't load ip_masq_ftp: $?\n";
+      }
   }
 }
 
@@ -122,18 +139,27 @@ sub account_rules {
   $do_port = $self->{pasv} unless defined $do_port;
 
   my ($ftp,$pasv,$port) = $self->prototypes( $target, $options );
-  acct_tcp_ruleset( $ftp,	$src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
+  acct_tcp_ruleset( $ftp, $src, $src_if, $dst, $dst_if, $masq );
   if ( $do_pasv ) {
-    acct_tcp_ruleset( $pasv,	$src, $src_if, $dst, $dst_if,
-		      $options->{masq} ? MASQ : NOMASQ
-		    );
+      acct_tcp_ruleset( $pasv,	$src, $src_if, $dst, $dst_if, $masq );
   }
   if ( $do_port ) {
-    acct_tcp_ruleset( $port,	$src, $src_if, $dst, $dst_if,
-		      $options->{masq} ? MASQ : NOMASQ
-		    );
+      if ( $masq & PORTFW ) {
+	  # We must portfw the ACK and not SYN. Thats why we must roll
+	  # our own
+	  acct_ip_ruleset( $port, $dst, $dst_if, $src, $src_if,
+			     UNPORTFW, $options->{portfw} );
+	  $port->{SYN} = '!';
+	  acct_ip_ruleset( $port, $src, $src_if, $dst, $dst_if,
+			     PORTFW, $options->{portfw} );
+      } else {
+	  accept_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if,
+			      $masq );
+      }
   }
 }
 

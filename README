@@ -1,7 +1,7 @@
 Fwctl
 =====
 
-Version: 0.21
+Version: 0.22
 
 Requirements
 ------------
@@ -9,6 +9,7 @@ kernel 2.2
 ipchains 1.3.8
 IPChains.pm 0.5
 Net::IPv4Addr.pm 0.06 or later
+ipmasqadm for port forwarding
 
 Description
 -----------
@@ -33,7 +34,8 @@ Rather than the approximate 100 rules to have the equivalent in a tight
 configuration. (When the default policy is to deny everything on all chains,
 and when you are using interface name in all rules.)
 
-Oh, it handles accounting too.
+From the same configuration files and using the same principles, it
+is possible to configure accounting and port forwarding.
 
 Installing
 ----------
@@ -74,6 +76,18 @@ Documentation
 -------------
 
 Documentation is included in POD format.
+
+Support & Mailing List
+----------------------
+
+There are two mailing lists related to Fwctl. 
+
+One is low traffic and moderated for announcements related material. You
+can subscribe by sending an empty message to fwctl-announce-subscribe@insu.com.
+
+The other mailing list is for discussion around the use of Fwctl. You
+can subscribe by sending an empty message to fwctl-users-subscribe@insu.com.
+
 
 Bugs
 ----

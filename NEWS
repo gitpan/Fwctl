@@ -1,3 +1,32 @@
+Fwctl NEWS -- history of user-visible changes.  17 Dec 1999
+
+* Changes in fwctl 0.22
+
+** Support for port forwarding with TCP and UDP based services. You can
+   now use a --portfw [ip] option with most services to specify one of the
+   firewall's ip address from which the service will be redirect to its
+   destination. 
+
+** New services: ip_pkt, udp_pkt, icmp_pkt, pptp and ipsec.
+
+** Masquerading not limited to icmp, tcp, udp. (Useful on kernel
+with VPN masquerading patch).
+
+** Protocol can now be specified numerically.
+
+** New alias: IF_REM_NETS expands to all networks attached to an
+interface EXCEPT the directly connected one.
+
+** fwctl flush will flush all chains even if there is a configuration error.
+
+** Bug fixes: 
+	- IF_NETS alias expansion. 
+	- Forwarding between two networks attached to the same interface.
+	- fwctl.init: check was doing a flush.
+	- Output chains protocol  optimisation wasn't working. (All packets
+	  passed through all the chains).
+
+
 Fwctl NEWS -- history of user-visible changes.  19 Oct 1999
 
 * Changes in fwctl 0.21

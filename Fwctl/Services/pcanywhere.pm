@@ -70,12 +70,14 @@ sub accept_rules {
 
   my ( $udp, $tcp ) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   accept_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-		      $options->{masq} ? MASQ : NOMASQ
-		    );
+		      $masq, $options->{portfw} );
+
   accept_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if,
-		      $options->{masq} ? MASQ : NOMASQ
-		    );
+		      $masq, $options->{portfw} );
 }
 
 sub account_rules {
@@ -84,12 +86,14 @@ sub account_rules {
 
   my ( $udp, $tcp ) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-		    $options->{masq} ? MASQ : NOMASQ
-		  );
+		    $masq, $options->{portfw} );
+
   acct_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if,
-		    $options->{masq} ? MASQ : NOMASQ
-		  );
+		    $masq, $options->{portfw} );
 
 }
 
@@ -99,6 +103,7 @@ sub valid_options {
 }
 
 1;
+
 =pod
 
 =head1 NAME

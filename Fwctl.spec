@@ -1,8 +1,8 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.21
+Version: 0.22
 Release: 1i
-Source: http://iNDev.iNsu.COM/Fwctl/%{name}-%{version}.tar.gz
+Source: http://iNDev.iNsu.COM/sources/%{name}-%{version}.tar.gz
 Copyright: GPL or Artistic License
 Group: Development/Libraries/Perl
 Prefix: /usr
@@ -10,7 +10,10 @@ URL: http://iNDev.iNsu.COM/Fwctl/
 BuildRoot: /var/tmp/%{name}-%{version}
 BuildArchitectures: noarch
 Prereq: /sbin/chkconfig
-Requires: perl Net-IPv4Addr
+Provides: perl(IPChains::PortFW) = 0.5
+Requires: perl, perl(Net::IPv4Addr) >= 0.07
+Requires: perl(IPChains) >= 0.5, ipchains >= 1.3.8
+Requires: perl(IPChains::PortFW)
 
 %description
 Fwctl is a module to configure the Linux kernel packet filtering firewall
@@ -58,7 +61,7 @@ done
 
 # Make a file list
 find $RPM_BUILD_ROOT -type d -path '*/usr/lib/perl5/site_perl/5.005/*' \
-    -not -path '*/auto' -not -path "*/*-linux" | \
+    -not -path '*/auto' -not -path "*/*-linux" -not -path '*/IPChains' | \
     sed -e "s!$RPM_BUILD_ROOT!%dir !" > %{name}-file-list
     
 find $RPM_BUILD_ROOT/usr/lib/perl5 -type f -o -type l | \
@@ -94,6 +97,11 @@ rm -fr $RPM_BUILD_ROOT
 %config /etc/cron.hourly/fwctl_acct
 
 %changelog
+* Wed Dec 15 1999  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.22-1i]
+- Updated to version 0.22.
+- Updated list of Provides and Requires.
+
 * Tue Oct 19 1999  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.21-1i]
 - Updated to version 0.21.

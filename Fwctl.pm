@@ -13,14 +13,13 @@
 package Fwctl;
 
 use strict;
-use vars qw( $VERSION @ISA @EXPORT @EXPORT_OK);
+use vars qw( $VERSION $PORTFW );
 
 BEGIN {
-  require Exporter;
-  @ISA = qw(Exporter);
+  $VERSION = '0.22';
 
-  @EXPORT = qw();
-  $VERSION = '0.21';
+  eval "use IPChains::PortFW";
+  $PORTFW = 1 unless $@;
 }
 
 # Preloaded methods go here.
@@ -28,6 +27,8 @@ use Net::IPv4Addr qw(:all);
 use Getopt::Long;
 use Fcntl qw( :flock );
 use Carp;
+use IPChains;
+
 
 # Constants
 use constant INTERFACES_FILE => '/etc/fwctl/interfaces';
@@ -41,7 +42,7 @@ use constant ACCOUNTING_FILE => '/var/log/fwctl_acct';
 my @REQUIRED_METHODS = qw( valid_options block_rules account_rules accept_rules );
 my %ACTIONS = map { $_ => 1; } qw( ACCEPT DENY REJECT ACCOUNT );
 my @STANDARD_OPTIONS = ( "masq!", "log!", "copy!", "src=s", "dst=s",
-			 "name=s", "account", "mark=i" );
+			 "name=s", "account", "mark=i", "portfw:s" );
 
 sub new {
   my $proto = shift;
@@ -276,6 +277,11 @@ sub reset_fw {
     $fwctl->del_chain( $_ );
   }
 
+  # If portfw is available flush it
+  if ( $PORTFW ) {
+      IPChains::PortFW->new()->flush;
+  }
+
   # Create accounting chains...
   for (qw(in fwd out )) {
     $fwctl->new_chain( "acct-$_" );
@@ -291,27 +297,40 @@ sub reset_fw {
 
   # Create the protocol optimizing chains...
   $fwctl->clopts;
-  for my $proto (qw( tcp udp icmp all syn ack )) {
+  for my $proto (qw( tcp udp icmp all syn ack oth )) {
     for my $dir ( qw( -in -fwd -out ) ) {
       $fwctl->new_chain( $proto . $dir );
     }
   }
 
   # ... add them to the firewall
-  for (qw(icmp tcp udp all)) {
-    $fwctl->attribute( Prot => $_);
-    $fwctl->attribute( Rule  => "$_-in" );
+  for my $proto (qw(icmp tcp udp)) {
+    $fwctl->attribute( Prot => $proto );
+    $fwctl->attribute( Rule  => "$proto-in" );
     $fwctl->append( "input" );
   }
-  for (qw(icmp tcp udp all)) {
-    $fwctl->attribute( Prot => $_);
-    $fwctl->attribute( Rule  => "$_-fwd" );
+  for my $proto (qw(icmp tcp udp)) {
+    $fwctl->attribute( Prot => $proto );
+    $fwctl->attribute( Rule  => "$proto-fwd" );
     $fwctl->append( "forward" );
   }
-  for (qw(icmp tcp udp all)) {
-    $fwctl->attribute( Prot => undef );
-    $fwctl->attribute( Rule  => "$_-out" );
+  for my $proto (qw(icmp tcp udp)) {
+    $fwctl->attribute( Prot => $proto );
+    $fwctl->attribute( Rule  => "$proto-out" );
     $fwctl->append( "output" );
+  }
+
+  # Add other and all
+  $fwctl->attribute( Prot => undef );
+  for my $proto ( qw(oth all) ) {
+      $fwctl->attribute( Rule  => "$proto-in" );
+      $fwctl->append( "input" );
+
+      $fwctl->attribute( Rule  => "$proto-fwd" );
+      $fwctl->append( "forward" );
+
+      $fwctl->attribute( Rule  => "$proto-out" );
+      $fwctl->append( "output" );
   }
 
   # The all optimisation may cause some
@@ -320,10 +339,7 @@ sub reset_fw {
   # order of the rules. In clear, all
   # ALL rules with be evaluated after
   # other rules with more specific
-  # protocol. This means that if you
-  # use the rules accept all internal
-  # block netbios. Internal Netbios WILL
-  # be blocked.
+  # protocol.
 
   # TCP with SYN or ACK
   $fwctl->attribute( Prot => 'tcp');
@@ -488,33 +504,37 @@ sub stop {
   $loopback->insert( "output" );
 }
 
+sub really_flush_chains {
+
+    # Sets default policies
+    my $fwctl = IPChains->new( Rule => 'ACCEPT' );
+    $fwctl->set_policy( "input" );
+    $fwctl->set_policy( "forward" );
+    $fwctl->set_policy( "output" );
+
+    # Flush standard chains
+    $fwctl->clopts;
+    $fwctl->flush( "input" );
+    $fwctl->flush( "output" );
+    $fwctl->flush( "forward" );
+
+    # Flush the user chains
+    for ($fwctl->list_chains) {
+	$fwctl->flush( $_ );
+    }
+
+    # ... and delete them
+    for ($fwctl->list_chains) {
+	$fwctl->del_chain( $_ );
+    }
+}
+
 sub flush_chains {
   my $self = shift;
 
   # Dump old account
   $self->dump_acct;
-
-  # Sets default policies
-  my $fwctl = IPChains->new( Rule => 'ACCEPT' );
-  $fwctl->set_policy( "input" );
-  $fwctl->set_policy( "forward" );
-  $fwctl->set_policy( "output" );
-
-  # Flush standard chains
-  $fwctl->clopts;
-  $fwctl->flush( "input" );
-  $fwctl->flush( "output" );
-  $fwctl->flush( "forward" );
-
-  # Flush the user chains
-  for ($fwctl->list_chains) {
-    $fwctl->flush( $_ );
-  }
-
-  # ... and delete them
-  for ($fwctl->list_chains) {
-    $fwctl->del_chain( $_ );
-  }
+  $self->really_flush_chains;
 
 }
 
@@ -596,6 +616,7 @@ sub read_aliases {
     my $if_alias    = $name . "_IF";
     my $ip_alias    = $name . "_IP";
     my $net_alias   = $name . "_NET";
+    my $rem_alias   = $name . "_REM_NETS";
     my $nets_alias  = $name . "_NETS";
     my $bcast_alias = $name . "_BCAST";
     my $net = $if->{network} . "/" . $if->{netmask};
@@ -606,7 +627,8 @@ sub read_aliases {
     $self->alias( $if_alias, $if->{interface} );
     $self->alias($net_alias, $net );
     $self->alias($ip_alias,  $if->{ip} );
-    $self->alias($nets_alias, $nets );
+    $self->alias($nets_alias, join( " ", @$nets ) );
+    $self->alias($rem_alias, join( " ", @{$nets}[ 1 .. $#$nets ] ) );
     $self->alias( $bcast_alias, $if->{broadcast} );
   }
 
@@ -639,34 +661,34 @@ sub read_rules {
     next if /^\s*$/;	# Skip blank lines
     chomp;
 
+    # When loop is sucessful it is decrement. Must be 0 when the loop quit.
+    $error++;
     my ($action,$service,@opts) = split;
 
     # Validate rule
     unless ( $action and $service ) {
       carp __PACKAGE__, ": incomplete rule at line $. of file $file\n";
-      $error = 1;
       next RULE;
     }
 
     $action = uc $action;
     unless ( $ACTIONS{ $action } ) {
       carp __PACKAGE__, ": unknown action $action at line $. of file $file\n";
-      $error = 1;
       next RULE;
     }
 
     unless ( $self->service( $service ) ) {
       carp __PACKAGE__, ": unknown service $service at line $. of file $file\n";
-      $error = 1 ;
       next RULE;
     }
 
     # Parse options
-    my %options	      = ( masq => 0 );
+    my %options	      = ( masq	    => 0,
+			  mark	    => 0,
+			  copy	    => 0,
+			  account   => 0,
+			);
     $options{log}     = $action =~ /REJECT|DENY/ ? 1 : 0;
-    $options{mark}    = 0;
-    $options{copy}    = 0;
-    $options{account} = 0;
     {
       local @ARGV = @opts;
       local $SIG{__WARN__} = 'IGNORE';
@@ -675,75 +697,156 @@ sub read_rules {
 		  $self->service($service)->valid_options )
 	or do {
 	  carp __PACKAGE__, ": error while parsing options in service $service\n";
-	  $error = 1;
 	  next RULE;
 	};
 
       if (@ARGV ) {
 	carp __PACKAGE__, ": unknown options", join( ",", @ARGV ), "\n";
-	$error = 1;
 	next RULE;
       }
-      if ($options{masq} and $action =~ /reject|deny/ ) {
-	carp __PACKAGE__, ": useless use of masq option at line $.\n";
-	$error = 1;
+      if ( $options{portfw} && ! $PORTFW ) {
+	  carp __PACKAGE__, ": can't use portfw because IPChains::PortFW ",
+	    "isn't available at line $.\n";
+	  next RULE;
+      }
+      if ( ($options{masq} || exists $options{portfw} ) && 
+	   $action =~ /reject|deny/i ) 
+      {
+	carp __PACKAGE__, ": useless use of masq/portfw option at line $.\n";
 	next RULE;
       }
-      if ($options{account} and $action eq "ACCOUNT" ) {
+      if ($options{masq} && exists $options{portfw} ) {
+	carp __PACKAGE__, ": conflicting use of masq and portfw at line $.\n";
+	next RULE;
+      }
+      if ($options{account} && $action eq "ACCOUNT" ) {
 	carp __PACKAGE__, ": can't use account option with ACCOUNT action at line $.\n";
-	$error = 1;
 	next RULE;
       }
     };
 
+    # Parse portfw
+    my ($portfw,$portfw_if) = ( $options{portfw} );
+    if ( $portfw ) {
+	$portfw = $self->alias( $portfw );
+	eval {
+	    ($options{portfw}) = ($portfw) = ipv4_parse( $portfw );
+	};
+	if ( $@ ) {
+	    carp __PACKAGE__, ": invalid ipv4 address in portfw at line $.\n";
+	    next RULE;
+	}
+
+	# Find the local interface which is attached to this address
+	$portfw_if = $self->find_interface( $portfw );
+	
+	if ( $portfw_if->{name} eq 'ANY' ) {
+	    carp __PACKAGE__, ": can't use ANY interface for portfw at line $.\n";
+	    next RULE;
+	}
+	if ( $portfw_if->{ip} ne $portfw ) {
+	    carp __PACKAGE__, ": not a local interface in portfw at line $.\n";
+	    next RULE;
+	}
+    }
+      
     # Parse src
     my @src = ();
-    if ($options{src}) {
-      my $src = $options{src};
-      foreach my $s ( $self->expand( $src ) ) {
-	if ( $s =~ /INTERNET/i ) {
-	  push @src, "INTERNET";
-	} elsif ($s =~ /ANY/i ) {
-	  push @src, "ANY";
-	} else {
-	  eval {
-	    push @src, scalar ipv4_parse( $s );
-	  };
-	  if ($@) {
-	    carp __PACKAGE__, ": error in src $src at line $. of file $file\n";
-	    $error = 1;
-	    next RULE;
-	  }
-	};
-      }
-      delete $options{src};
+    if ( $options{src} ) {
+	my $src = $options{src};
+	foreach my $s ( $self->expand( $src ) ) {
+	    if ( $s =~ /INTERNET/i ) {
+		if ( $portfw && $portfw_if->{name} ne 'EXT' ) {
+		    carp __PACKAGE__, ": can't src of portfw doesn't match ",
+		      "interface at line $.\n";
+		    next RULE;
+		}
+		push @src, "INTERNET";
+	    } elsif ($s =~ /ANY/i ) {
+		if ( defined $portfw ) {
+		    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
+		    next RULE;
+		} else {
+		    push @src, "ANY";
+		}
+	    } else {
+		eval {
+		    push @src, scalar ipv4_parse( $s );
+		};
+		if ($@) {
+		    carp __PACKAGE__, ": error in src $src at line $.\n";
+		    next RULE;
+		}
+		if ( $portfw  ) {
+		    my $if = $self->find_interface( $src[ $#src ] );
+		    if ( $if->{interface} ne $portfw_if->{interface} ) {
+			carp __PACKAGE__, ": src of portfw doesn't match ",
+			  "interface at line $.\n";
+			next RULE;
+		    }
+		}
+	    }
+	}
+	delete $options{src};
     } else {
-      push @src, "ANY";
+	if ( defined $portfw ) {
+	    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
+	    next RULE;
+	} else {
+	    push @src, "ANY";
+	}
     }
 
     # Parse dst
     my @dst = ();
     if ( $options{dst} ) {
-      my $dst = $options{dst};
-      foreach my $d ( $self->expand($dst) ) {
-	if ( $d =~ /INTERNET/i ) {
-	  push @dst, "INTERNET";
-	} elsif ($d =~ /ANY/i ) {
-	  push @dst, "ANY";
-	} else {
-	  eval {
-	    push @dst, scalar ipv4_parse( $d );
-	  };
-	  if ($@) {
-	    carp __PACKAGE__, ": error in dst $dst at line $. of file $file\n";
-	    $error = 1;
-	    next RULE;
-	  }
+	my $dst = $options{dst};
+	foreach my $d ( $self->expand($dst) ) {
+	    if ( defined $portfw ) {
+		# With portfw only host can be used as dst.
+		if ( $d =~ /INTERNET|ANY/i ) {
+		    carp __PACKAGE__, ": can only use host in dst with ",
+		      "portfw $.\n";
+		    next RULE;
+		} else {
+		    eval {
+			my ($ip,$cidr) = ipv4_parse( $d );
+			unless ( ! defined $cidr || $cidr == 32 ) {
+			    carp __PACKAGE__, ": can only use host in ",
+			      "dst with portfw $.\n";
+			    next RULE;
+			}
+			push @dst, $ip;
+		    };
+		    if ($@) {
+			carp __PACKAGE__, ": error in dst $dst at line $.\n";
+			next RULE;
+		    }
+		}
+	    } else {
+		if ( $d =~ /INTERNET/i ) {
+		    push @dst, "INTERNET";
+		} elsif ($d =~ /ANY/i ) {
+		    push @dst, "ANY";
+		} else {
+		    eval {
+			push @dst, scalar ipv4_parse( $d );
+		    };
+		    if ($@) {
+			carp __PACKAGE__, ": error in dst $dst at line $.\n";
+			next RULE;
+		    }
+		}
+	    }
 	}
-      }
-      delete $options{dst};
-    }else {
-      push @dst, "ANY";
+	delete $options{dst};
+    } else {
+	if ( defined $portfw ) {
+	    carp __PACKAGE__, ": can't use portfw with ANY dst at line $.\n";
+	    next RULE;
+	} else {
+	    push @dst, "ANY";
+	}
     }
 
     # Create standard IPChains options
@@ -783,6 +886,7 @@ sub read_rules {
 			      };
 
     }
+    $error--;
   }
   close RULES;
   croak __PACKAGE__, ": error while reading rules. Aborting\n" if $error;
@@ -1000,10 +1104,16 @@ the network attached to this interface.
 The is an alias name IF_IP for each defined interface which corresponds to
 the broadcast address of this interface.
 
+=item <IF>_REM_NETS
+
+The is an alias name IF_IP for each defined interface which corresponds to
+all the networks that are routed through this interface excepted the one
+directly connected.
+
 =item <IF>_NETS
 
 The is an alias name IF_IP for each defined interface which corresponds to
-the all the networks attached to this interface, not only the direct one.
+all the networks attached to this interface, not only the direct one.
 
 =back
 
@@ -1156,6 +1266,17 @@ Marks the packet with the specified integer.
 
 Sets the accounting name for this rule. This is easier to read than
 the unique name generated internally.
+
+=item --portfw [local_ip]
+
+The service will be interpreted as being redirected from a local
+address to another host on a network attached to one of the firewall
+interface. The optional argument is one of the IP of a defined
+interface. If the local_ip from which the service will redirected is
+unspecified, the one attached to the incoming interface will be used.
+
+When using portfw, the dst parameter can only contains hosts and all
+src must be compatible with the local_ip.
 
 =back
 

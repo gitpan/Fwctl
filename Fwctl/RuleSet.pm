@@ -18,9 +18,12 @@ use Net::IPv4Addr qw( ipv4_in_network ipv4_broadcast ipv4_parse );
 use IPChains;
 use Carp;
 
-use constant NOMASQ => 0;
-use constant MASQ   => 1;
-use constant UNMASQ => 2;
+use constant NOMASQ	=> 0;
+use constant MASQ	=> 1;
+use constant UNMASQ	=> 2;
+use constant MASQNOHIGH => 4;
+use constant PORTFW	=> 8;
+use constant UNPORTFW	=> MASQ|MASQNOHIGH;
 
 use constant RESERVED_PORTS	=> "1:1023";
 use constant UNPRIVILEGED_PORTS => "1024:65535";
@@ -36,7 +39,7 @@ BEGIN {
   @EXPORT_OK	= ();
 
   %EXPORT_TAGS = (
-		  masq	       => [ qw( NOMASQ MASQ UNMASQ ) ],
+		  masq	       => [ qw( NOMASQ MASQ UNMASQ PORTFW UNPORTFW MASQNOHIGH ) ],
 		  ports	       => [ qw( RESERVED_PORTS UNPRIVILEGED_PORTS MASQ_PORTS ) ],
 		  tcp_rulesets => [ qw( accept_tcp_ruleset block_tcp_ruleset
 					acct_tcp_ruleset ) ],
@@ -47,6 +50,9 @@ BEGIN {
 		 );
 
   Exporter::export_ok_tags( keys %EXPORT_TAGS );
+
+  # Optional module
+  eval "use IPChains::PortFW";
 }
 
 
@@ -75,6 +81,10 @@ sub determine_base {
   my $proto  = $ipchain->attribute( 'Prot' );
   return "all" if not defined $proto or $proto =~ /all/i;
 
+  # Handle numeric protocol specification
+  my $proto_name = getprotobynumber $proto if $proto =~ /\d+/;
+  $proto = $proto_name if defined $proto_name;
+
   my $syn = 0;
   my $ack = 0;
   if ($proto =~ /tcp/i and defined $ipchain->attribute( 'SYN' ) ) {
@@ -91,12 +101,16 @@ sub determine_base {
 }
 
 sub accept_tcp_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $masq ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $masq, $portfw ) = @_;
 
   croak __PACKAGE__, ": protocol isn't TCP"
     unless $ipchain->attribute( 'Prot' ) =~ /tcp/i;
 
   $masq = NOMASQ unless defined $masq;
+
+  croak __PACKAGE__, ": can't use invalid \$masq and \$portfw combination"
+    if (   defined $portfw && ! $masq & PORTFW) ||
+       ( ! defined $portfw &&   $masq & PORTFW );
 
   my $syn      = $ipchain->attribute( 'SYN' );
   my $src_port = $ipchain->attribute( 'SourcePort' );
@@ -104,14 +118,23 @@ sub accept_tcp_ruleset {
 
   # Client side
   $ipchain->attribute( SYN => undef );
-  accept_ip_ruleset( $ipchain, $src, $src_if, $dst, $dst_if, $masq );
+  accept_ip_ruleset( $ipchain, $src, $src_if, $dst, $dst_if, $masq, $portfw );
 
   # Server side
   $ipchain->attribute( SourcePort => $dst_port );
   $ipchain->attribute( DestPort   => $src_port );
   $ipchain->attribute( SYN => '!' );
-  accept_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if,
-		    ($masq == MASQ ? UNMASQ : NOMASQ ) );
+
+  # Switch from MASQ to UNMASQ
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      # Packets that were port forwarded should be masqueraded back
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
+  accept_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if, $masq, $portfw );
 
   # Restore params
   $ipchain->attribute( SourcePort => $src_port );
@@ -120,24 +143,36 @@ sub accept_tcp_ruleset {
 }
 
 sub accept_udp_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $masq ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $masq, $portfw ) = @_;
 
   croak __PACKAGE__, ": protocol isn't UDP"
     unless $ipchain->attribute( 'Prot' ) =~ /UDP/i;
 
   $masq = NOMASQ unless defined $masq;
 
+  croak __PACKAGE__, ": can't use invalid \$masq and \$portfw combination"
+    if (   defined $portfw && ! $masq & PORTFW) ||
+       ( ! defined $portfw &&   $masq & PORTFW );
+
   my $src_port = $ipchain->attribute( 'SourcePort' );
   my $dst_port = $ipchain->attribute( 'DestPort' );
 
   # Client side
-  accept_ip_ruleset( $ipchain, $src, $src_if, $dst, $dst_if, $masq );
+  accept_ip_ruleset( $ipchain, $src, $src_if, $dst, $dst_if, $masq, $portfw );
 
   # Server side
   $ipchain->attribute( SourcePort => $dst_port );
   $ipchain->attribute( DestPort   => $src_port );
-  accept_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if,
-		  ($masq == MASQ ? UNMASQ : NOMASQ ) );
+  # Switch from MASQ to UNMASQ
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      # Packets that were port forwarded should be masqueraded back
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
+  accept_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if, $masq, $portfw );
 
   # Restore params
   $ipchain->attribute( SourcePort => $src_port );
@@ -147,7 +182,7 @@ sub accept_udp_ruleset {
 # Adds protocol necessary ruleset for a type of packet
 # to pass through the interface of the firewall.
 sub accept_ip_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $masq ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $masq, $portfw ) = @_;
 
   croak __PACKAGE__, ": rule target must be ACCEPT: ", $ipchain->attribute( 'Rule' )
     unless $ipchain->attribute( 'Rule' ) =~ /ACCEPT/;
@@ -162,29 +197,30 @@ sub accept_ip_ruleset {
 
   # Check masquerading parameter.
   $masq = NOMASQ unless defined $masq;
-  if ($masq) {
-    croak __PACKAGE__, "only TCP, UDP and ICMP can be masqueraded: $base\n"
-      if $base =~ /oth/i;
-  }
+
+  croak __PACKAGE__, ": can't use \$portfw with protocol other than TCP or UDP"
+    if defined $portfw && $base !~ /udp|tcp|syn|ack/;
 
  SWITCH:
   for ("$src_kind-$dst_kind" ) {
     /ANY-ANY|ANY-REMOTE|REMOTE-ANY/ && do {
-      ip_forward_ruleset( @_[0..4], $base, $masq );
-      if ( $masq == MASQ ) {
+      ip_forward_ruleset( @_[0..4], $base, $masq, $portfw );
+      if ( $masq & MASQ ) {
 	ip_local_out_ruleset( @_[0..4], $base );
-      } elsif ( $masq == UNMASQ ) {
+      } elsif ( $masq & UNMASQ ) {
 	ip_local_in_ruleset( @_[0..4], $base );
       }
       last SWITCH;
     };
     /LOCAL_IMPLIED-LOCAL_IMPLIED/ && do {
-      if ( $src_if->{name} ne $dst_if->{name} ) {
+	# name handle the INTERNET or 0.0.0.0/0 case 
+	# and ipv4_in_network handle the case of two routers scenario
+      if ( $src_if->{name} ne $dst_if->{name} || ! ipv4_in_network( $src, $dst ) ) {
 	# Src and dst networks are different
-	ip_forward_ruleset( @_[0..4], $base, $masq );
-	if ( $masq == MASQ ) {
+	ip_forward_ruleset( @_[0..4], $base, $masq, $portfw );
+	if ( $masq & MASQ ) {
 	  ip_local_out_ruleset( @_[0..4], $base );
-	} elsif ( $masq == UNMASQ ) {
+	} elsif ( $masq & UNMASQ ) {
 	  ip_local_in_ruleset( @_[0..4], $base );
 	}
       } else {
@@ -194,9 +230,11 @@ sub accept_ip_ruleset {
       last SWITCH;
     };
     /REMOTE-LOCAL_IMPLIED|LOCAL_IMPLIED-REMOTE/ && do {
-      if ( $src_if->{name} ne $dst_if->{name} ) {
+	# name handle the INTERNET or 0.0.0.0/0 case 
+	# and ipv4_in_network handle the case of two routers scenario
+      if ( $src_if->{name} ne $dst_if->{name} || ! ipv4_in_network( $src, $dst ) ) {
 	# Src and dst networks are different
-	ip_forward_ruleset( @_[0..4], $base, $masq );
+	ip_forward_ruleset( @_[0..4], $base, $masq, $portfw );
       } else {
 	# No forwarding will take place
 	ip_local_in_ruleset( @_[0..4], $base );
@@ -204,25 +242,25 @@ sub accept_ip_ruleset {
       last SWITCH;
     };
     /ANY-LOCAL_IMPLIED/ && do {
-      ip_forward_ruleset( @_[0..4], $base, $masq );
+      ip_forward_ruleset( @_[0..4], $base, $masq, $portfw );
       ip_loopback_out_ruleset( @_[0..4], $base );
-      if ( $masq == MASQ ) {
+      if ( $masq & MASQ ) {
 	ip_local_out_ruleset( @_[0..4], $base );
-      } elsif ( $masq == UNMASQ ) {
+      } elsif ( $masq & UNMASQ ) {
 	ip_local_in_ruleset( @_[0..4], $base );
       }
       last SWITCH;
     };
     /REMOTE-REMOTE/ && do {
-      ip_forward_ruleset( @_[0..4], $base, $masq );
+      ip_forward_ruleset( @_[0..4], $base, $masq, $portfw );
       last SWITCH;
     };
     /LOCAL_IMPLIED-ANY/ && do {
-      ip_forward_ruleset( @_[0..4], $base, $masq );
+      ip_forward_ruleset( @_[0..4], $base, $masq, $portfw );
       ip_loopback_in_ruleset( @_[0..4], $base );
-      if ( $masq == MASQ ) {
+      if ( $masq & MASQ ) {
 	ip_local_out_ruleset( @_[0..4], $base );
-      } elsif ( $masq == UNMASQ ) {
+      } elsif ( $masq & UNMASQ ) {
 	ip_local_in_ruleset( @_[0..4], $base );
       }
       last SWITCH;
@@ -317,9 +355,9 @@ sub ip_local_in_ruleset {
 # src_if and dst_if should be different
 # then lo.
 sub ip_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq, $portfw ) = @_;
 
-  if ( $masq == MASQ ) {
+  if ( $masq & MASQ ) {
   SWITCH:
     for ($base) {
       /tcp|ack|syn/ && do {
@@ -330,8 +368,8 @@ sub ip_forward_ruleset {
 	udp_masq_forward_ruleset( @_ );
 	last SWITCH;
       };
-      /icmp/ && do {
-	icmp_masq_forward_ruleset( @_ );
+      /icmp|oth/ && do {
+	ip_masq_forward_ruleset( @_ );
 	last SWITCH;
       };
       /all/ && do {
@@ -341,8 +379,8 @@ sub ip_forward_ruleset {
 	all_masq_forward_ruleset(  @_ );
 	last SWITCH;
       };
-    }
-  } elsif ($masq == UNMASQ ) {
+  }
+  } elsif ($masq & UNMASQ ) {
   SWITCH:
     for ($base) {
       /tcp|ack|syn/ && do {
@@ -353,15 +391,22 @@ sub ip_forward_ruleset {
 	udp_unmasq_forward_ruleset( @_ );
 	last SWITCH;
       };
-      /icmp/ && do {
-	icmp_unmasq_forward_ruleset( @_ );
+      /icmp|oth/ && do {
+	ip_unmasq_forward_ruleset( @_ );
 	last SWITCH;
       };
       /all/ && do {
 	all_unmasq_forward_ruleset( @_ );
 	last SWITCH;
       };
-    }
+  }
+  } elsif ( $masq & PORTFW ) {
+      if ($base =~ /tcp|ack|syn|udp/ ) {
+	  tcpudp_portfw_forward_ruleset( @_ );
+      } else {
+	  croak __PACKAGE__,
+	    "can't use portfw with other protocol than udp or tcp";
+      }
   } else {
     $ipchain->attribute( Interface => $src_if->{interface} );
     $ipchain->append( "$base-in" );
@@ -372,9 +417,9 @@ sub ip_forward_ruleset {
 }
 
 # Add rule to necessary chains to handle
-# a route TCP masqueraded packet. 
+# a route TCP masqueraded packet.
 sub tcp_masq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq, $masqip ) = @_;
 
   $ipchain->attribute( Interface => $src_if->{interface} );
   $ipchain->append( "$base-in" );
@@ -386,15 +431,17 @@ sub tcp_masq_forward_ruleset {
   $ipchain->attribute( Rule => $rule );
 
   my $saved_ports = $ipchain->attribute('SourcePort');
-  $ipchain->attribute( Source	    => $dst_if->{ip} );
-  $ipchain->attribute( SourcePort   => MASQ_PORTS );
+  my $ip =  $masqip ? $masqip : $dst_if->{ip};
+  $ipchain->attribute( Source	    => $ip );
+  $ipchain->attribute( SourcePort   => MASQ_PORTS ) unless $masq & MASQNOHIGH;
   $ipchain->append( "$base-out" );
   $ipchain->attribute( Source	    => $src );
   $ipchain->attribute( SourcePort   => $saved_ports );
 }
+
 
 sub udp_masq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq, $masqip ) = @_;
 
   $ipchain->attribute( Interface => $src_if->{interface} );
   $ipchain->append( "$base-in" );
@@ -405,14 +452,15 @@ sub udp_masq_forward_ruleset {
   $ipchain->attribute( Rule => $rule );
 
   my $saved_ports = $ipchain->attribute('SourcePort');
-  $ipchain->attribute( Source	    => $dst_if->{ip} );
-  $ipchain->attribute( SourcePort   => MASQ_PORTS );
+  my $ip = $masqip ? $masqip : $dst_if->{ip};
+  $ipchain->attribute( Source	    => $ip );
+  $ipchain->attribute( SourcePort   => MASQ_PORTS ) unless $masq & MASQNOHIGH;
   $ipchain->append( "$base-out" );
   $ipchain->attribute( Source	    => $src );
   $ipchain->attribute( SourcePort   => $saved_ports );
 }
 
-sub icmp_masq_forward_ruleset {
+sub ip_masq_forward_ruleset {
   my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
 
   $ipchain->attribute( Interface => $src_if->{interface} );
@@ -429,7 +477,7 @@ sub icmp_masq_forward_ruleset {
 }
 
 sub all_masq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
 
   $ipchain->attribute( Interface => $src_if->{interface} );
   $ipchain->append( "$base-in" );
@@ -449,7 +497,7 @@ sub all_masq_forward_ruleset {
 
   # UDP and TCP
   # All shouldn't have a saved port.
-  $ipchain->attribute( SourcePort   => MASQ_PORTS );
+  $ipchain->attribute( SourcePort   => MASQ_PORTS ) unless $masq & MASQNOHIGH;
 
   $ipchain->attribute( Prot => "tcp" );
   $ipchain->append( "tcp-out" );
@@ -465,12 +513,12 @@ sub all_masq_forward_ruleset {
 # Add rule to necessary chains to handle
 # a route TCP packet which was masqueraded.
 sub tcp_unmasq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
 
   my $saved_ports = $ipchain->attribute('DestPort');
   $ipchain->attribute( Interface => $src_if->{interface} );
   $ipchain->attribute( Dest	 => $src_if->{ip} );
-  $ipchain->attribute( DestPort  => MASQ_PORTS );
+  $ipchain->attribute( DestPort  => MASQ_PORTS ) unless $masq & MASQNOHIGH;
   $ipchain->append( "$base-in" );
   $ipchain->attribute( Dest	 => $dst );
   $ipchain->attribute( DestPort  => $saved_ports );
@@ -480,12 +528,12 @@ sub tcp_unmasq_forward_ruleset {
 }
 
 sub udp_unmasq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
 
   my $saved_ports = $ipchain->attribute('DestPort');
   $ipchain->attribute( Interface => $src_if->{interface} );
   $ipchain->attribute( Dest	 => $src_if->{ip} );
-  $ipchain->attribute( DestPort  => MASQ_PORTS );
+  $ipchain->attribute( DestPort  => MASQ_PORTS ) unless $masq & MASQNOHIGH;
   $ipchain->append( "$base-in" );
   $ipchain->attribute( Dest	 => $dst );
   $ipchain->attribute( DestPort  => $saved_ports );
@@ -494,7 +542,7 @@ sub udp_unmasq_forward_ruleset {
   $ipchain->append( "$base-out" );
 }
 
-sub icmp_unmasq_forward_ruleset {
+sub ip_unmasq_forward_ruleset {
   my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
 
   my $saved_ports = $ipchain->attribute('DestPort');
@@ -508,7 +556,7 @@ sub icmp_unmasq_forward_ruleset {
 }
 
 sub all_unmasq_forward_ruleset {
-  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base ) = @_;
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq ) = @_;
 
   $ipchain->attribute( Interface => $src_if->{interface} );
   $ipchain->attribute( Dest	 => $src_if->{ip} );
@@ -518,7 +566,7 @@ sub all_unmasq_forward_ruleset {
   $ipchain->append( "icmp-in" );
 
   # UDP
-  $ipchain->attribute( DestPort  => MASQ_PORTS );
+  $ipchain->attribute( DestPort  => MASQ_PORTS ) unless $masq & MASQNOHIGH;
   $ipchain->attribute( Prot => 'udp' );
   $ipchain->append( "udp-in" );
 
@@ -535,6 +583,35 @@ sub all_unmasq_forward_ruleset {
   $ipchain->attribute( Dest	 => $dst );
   $ipchain->attribute( Interface => $dst_if->{interface} );
   $ipchain->append( "$base-out" );
+
+}
+
+sub tcpudp_portfw_forward_ruleset {
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq, $portfw ) = @_;
+  $portfw ||= $src_if->{ip};
+
+  # Incoming address is in $portfw
+  $ipchain->attribute( Interface => $src_if->{interface} );
+  $ipchain->attribute( Dest => $portfw );
+  $ipchain->append( "$base-in" );
+
+  $ipchain->attribute( Dest => $dst );
+
+  $ipchain->attribute( Interface => $dst_if->{interface} );
+  $ipchain->append( "$base-fwd" );
+  $ipchain->append( "$base-out" );
+
+  # Add port forwarding rule
+  my $proto = $ipchain->attribute( 'Prot' );
+  my $port  = $ipchain->attribute( 'DestPort' );
+
+  my $portfw_chain = new IPChains::PortFW( Proto     => $proto,
+					   LocalAddr => $portfw,
+					   LocalPort => $port,
+					   RemAddr   => $dst,
+					   RemPort   => $port
+					 );
+  $portfw_chain->append;
 
 }
 
@@ -674,8 +751,16 @@ sub acct_tcp_ruleset {
   $ipchain->attribute( SourcePort => $dst_port );
   $ipchain->attribute( DestPort   => $src_port );
   $ipchain->attribute( SYN => '!' );
-  acct_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if,
-		       ($masq == MASQ ? UNMASQ : NOMASQ ) );
+  # Switch from MASQ to UNMASQ
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      # Packets that were port forwarded should be masqueraded back
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
+  acct_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if, $masq );
 
   # Restore params
   $ipchain->attribute( SourcePort => $src_port );
@@ -701,8 +786,17 @@ sub acct_udp_ruleset {
   # Server side
   $ipchain->attribute( SourcePort => $dst_port );
   $ipchain->attribute( DestPort   => $src_port );
-  acct_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if,
-		   ($masq == MASQ ? UNMASQ : NOMASQ ) );
+
+  # Switch from MASQ to UNMASQ
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      # Packets that were port forwarded should be masqueraded back
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
+  acct_ip_ruleset( $ipchain, $dst, $dst_if, $src, $src_if, $masq );
 
   # Restore params
   $ipchain->attribute( SourcePort => $src_port );
@@ -725,10 +819,6 @@ sub acct_ip_ruleset {
 
   # Check masquerading parameter.
   $masq = NOMASQ unless defined $masq;
-  if ($masq) {
-    croak __PACKAGE__, "only TCP, UDP and ICMP can be masqueraded: $base\n"
-      if $base =~ /oth/i;
-  }
 
  SWITCH:
   for ("$src_kind-$dst_kind" ) {
@@ -764,13 +854,14 @@ sub acct_ip_ruleset {
     /ANY-REMOTE|LOCAL_IMPLIED-REMOTE/ && do {
       $ipchain->attribute( Interface => $dst_if->{interface} );
       $ipchain->append( "acct-out" );
-      if ($masq == MASQ ) {
+      if ($masq & MASQ ) {
 	$ipchain->attribute( Source => $dst_if->{ip} );
 
 	# UDP and TCP gets their ports rewritten
 	if ( $base =~ /tcp|udp|syn|ack/ ) {
 	  my $saved_ports = $ipchain->attribute( 'SourcePort' );
-	  $ipchain->attribute( SourcePort => MASQ_PORTS );
+	  $ipchain->attribute( SourcePort => MASQ_PORTS )
+	    unless $masq & MASQNOHIGH;
 	  $ipchain->append( "acct-out" );
 	  $ipchain->attribute( SourcePort => $saved_ports );
 	} else {
@@ -782,12 +873,13 @@ sub acct_ip_ruleset {
     };
     /REMOTE-REMOTE/ && do {
       $ipchain->attribute( Interface => $dst_if->{interface} );
-      if ($masq == MASQ ) {
+      if ($masq & MASQ ) {
 	$ipchain->attribute( Source => $dst_if->{ip} );
 	# UDP and TCP gets their ports rewritten
 	if ( $base =~ /tcp|udp|syn|ack/ ) {
 	  my $saved_ports = $ipchain->attribute( 'SourcePort' );
-	  $ipchain->attribute( SourcePort => MASQ_PORTS );
+	  $ipchain->attribute( SourcePort => MASQ_PORTS )
+	    unless $masq & MASQNOHIGH;
 	  $ipchain->append( "acct-out" );
 	  $ipchain->attribute( SourcePort => $saved_ports );
 	} else {
@@ -802,7 +894,7 @@ sub acct_ip_ruleset {
     /REMOTE-ANY|REMOTE-LOCAL_IMPLIED/ && do {
       $ipchain->attribute( Interface => $src_if->{interface} );
       $ipchain->append( "acct-in" );
-      if ($masq == UNMASQ ) {
+      if ($masq & UNMASQ ) {
 	$ipchain->attribute( Dest => $src_if->{ip} );
 	# UDP and TCP gets their ports rewritten
 	if ( $base =~ /tcp|udp|syn|ack/ ) {
@@ -823,11 +915,12 @@ sub acct_ip_ruleset {
       $ipchain->attribute( Interface => "lo" ); # Loopback
       $ipchain->append( "acct-out" );
       $ipchain->attribute( Interface => $dst_if->{interface} );
-      if ($masq == MASQ ) {
+      if ($masq & MASQ ) {
 	$ipchain->attribute ( Source => $dst_if->{ip} );
 	if ($base =~ /tcp|syn|ack|udp/) {
 	  my $saved_ports = $ipchain->attribute( 'SourcePort' );
-	  $ipchain->attribute( SourcePort => MASQ_PORTS );
+	  $ipchain->attribute( SourcePort => MASQ_PORTS )
+	    unless $masq & MASQ_PORTS;
 	  $ipchain->append( "acct-out" );
 	  $ipchain->attribute( SourcePort => $saved_ports );
 	} else {
@@ -844,6 +937,7 @@ sub acct_ip_ruleset {
 }
 
 1;
+
 =pod
 
 =head1 NAME
@@ -855,7 +949,7 @@ Fwctl::RuleSet - Module to add sets of rules to the linux firewall.
   use IPChains;
   use Fwctl::RuleSet qw(:masq :tcp_rulesets :ports);
 
-  my $chain = new IPChains( Prot       => 'tcp', 
+  my $chain = new IPChains( Prot       => 'tcp',
 			    SourcePort => UNPRIVILEGED_PORTS,
 			    DestPort   => 23,
 			    )

@@ -1,5 +1,66 @@
+f1999-12-17  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Tag: FWCTL_0_22
+
+	* fwctl(flush): Flush with warning if there is a configuration
+	file problem.
+	
+	* Fwctl.pm(flush_chains,really_flush_chains) Added a 
+	really_flush_chains method that can be called without
+	an object.
+
+	* Several:	    Added port forwarding support.
+
+1999-12-16  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* IPChains/PortFW.pm:	    New.
+
+	* Fwctl/Services/ipsec.pm:	New service module.
+
+	* Fwctl/Services/pptp.pm:	New service module.
+
+	* Fwctl.pm(reset_fw):	Added oth-in, oth-out and oth-fwd
+	chains. Protocol optimisation on the output chains wasn't
+	working. (Packets passed through all the chain)
+
+	* Fwctl/Services/icmp_pkt.pm:	New service module.
+
+	* Fwctl/Services/udp_pkt.pm:	New service module.
+
+	* Fwctl/Services/ip_pkt.pm:	New service module.
+
+	* Fwctl/RuleSet.pm (constants and others): MASQ constants are 
+	not a bit fields and added FWDMASQ and MASQNOHIGH values.
+	(determine_base,accept_ip_ruleset): Masquerading isn't
+	limited to icmp,udp and tcp protocol anymore.
+
+
+1999-12-15  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Fwctl.pm(read_aliases,pod): Added IF_REM_NETS alias
+	that expands to all remote network attach to an interface.
+
+	* test.pl: Print current test being run and strip
+	whitespace before comparing regression tests results.
+
+	* Fwctl/RuleSet.pm(accept_ip_ruleset): Handle case of 
+	forwarding on the same interface when src and dst are on
+	different network.
+
+1999-11-22  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* fwctl.init(check):	Check was flushing the rules instead
+	of doing a check.
+
+1999-10-20  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* Fwctl.pm (read_aliases): <IF>_NETS aliases was defined
+	as an array references which caused a bug in expand().
+
 1999-10-19  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
 
+	* TAG: FWCTL_0_21
+	
 	* Fwctl/Services/rsh.pm: Documentation fixes.
 	
 	* Fwctl/Services/redirect.pm: New service definition.

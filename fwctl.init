@@ -29,11 +29,10 @@ case "$1" in
 	rm -f /var/lock/subsys/fwctl
 	;;
   check)
-        action "WARNING: Flushing all firewall rules" fwctl flush
+	fwctl check
 	;;
-
   flush)
-       fwctl flush
+       action "WARNING: Flushing all firewall rules" fwctl flush
        ;;
   restart|reload)
 	action "Updating IP packet filters" fwctl restart

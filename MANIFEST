@@ -49,6 +49,12 @@ Fwctl/Services/name_service.pm
 Fwctl/Services/lpd.pm
 Fwctl/Services/pcanywhere.pm
 Fwctl/Services/redirect.pm
+Fwctl/Services/icmp_pkt.pm
+Fwctl/Services/ip_pkt.pm
+Fwctl/Services/ipsec.pm
+Fwctl/Services/pptp.pm
+Fwctl/Services/udp_pkt.pm
+IPChains/PortFW.pm
 Fwctl/RuleSet.pm
 test-data/etc/aliases
 test-data/etc/interfaces
@@ -166,3 +172,13 @@ test-data/in/accept-telnet-INT_NET_INTERNET-log
 test-data/in/accept-lpd-INT_HOST-INTERNET_HOST
 test-data/in/accept-pcanywhere-INT_HOST-INTERNET_HOST
 test-data/in/accept-telnet-INT_HOST-INT_REM_HOST
+test-data/in/accept-ftp-INTERNET-INT_HOST-portfw
+test-data/in/accept-icmp_pkt-INT_IP-INT_NET
+test-data/in/accept-ip_pkt-INT_HOST-INTERNET_HOST
+test-data/in/accept-ipsec-INT_HOST-INTERNET_HOST
+test-data/in/accept-pptp-INT_HOST-INTERNET_HOST-masq
+test-data/in/accept-ssh-INTERNET-INT_HOST-portfw
+test-data/in/accept-telnet-INT_NETS-INT_REM_HOST
+test-data/in/accept-telnet-INT_REM_NETS-INT_REM_HOST
+test-data/in/accept-udp_pkt-INT_HOST-INTERNET_HOST
+test-data/in/accept-udp_service-INT_NET-PERIM_HOST-portfw-INT1_IP

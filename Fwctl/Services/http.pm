@@ -57,11 +57,12 @@ sub accept_rules {
   my $port = $options->{port} || $self->{port};
 
   my ($http) = $self->prototypes( $target, $options );
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
   for (split /,/, $port ) {
     $http->attribute( DestPort => $_ );
     accept_tcp_ruleset( $http, $src, $src_if, $dst, $dst_if,
-			$options->{masq} ? MASQ : NOMASQ
-		      );
+			$masq, $options->{portfw} );
   }
 }
 
@@ -70,13 +71,13 @@ sub account_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my $port = $options->{port} || $self->{port};
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
 
   my ($http) = $self->prototypes( $target, $options );
   for (split /,/, $port ) {
     $http->attribute( DestPort => $_ );
-    acct_tcp_ruleset( $http, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		    );
+    acct_tcp_ruleset( $http, $src, $src_if, $dst, $dst_if, $masq );
   }
 }
 
@@ -86,6 +87,7 @@ sub valid_options {
 }
 
 1;
+
 =pod
 
 =head1 NAME

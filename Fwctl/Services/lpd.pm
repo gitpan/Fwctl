@@ -55,9 +55,11 @@ sub accept_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my ($lpd,$stderr) = $self->prototypes( $target, $options );
-  accept_tcp_ruleset( $lpd,	$src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+  accept_tcp_ruleset( $lpd, $src, $src_if, $dst, $dst_if,
+		      $masq, $options->{portfw} );
 }
 
 sub account_rules {
@@ -65,9 +67,9 @@ sub account_rules {
   my ( $target, $src, $src_if, $dst, $dst_if, $options ) = @_;
 
   my ($lpd,$stderr) = $self->prototypes( $target, $options );
-  acct_tcp_ruleset( $lpd,	$src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+  acct_tcp_ruleset( $lpd, $src, $src_if, $dst, $dst_if, $masq );
 }
 
 sub valid_options {

@@ -1,9 +1,25 @@
+use vars qw( $x );
 use strict;
-use Test;
 
 $| = 1;
 
-BEGIN { plan tests => 116; }
+$x = 1;
+
+BEGIN {
+    print "1..126\n";
+}
+
+sub test {
+    my ($name, $got, $expected ) = @_;
+
+    printf STDERR "%-60s", $name;
+    if ( $got ne $expected ) {
+	print STDOUT "not ok $x\n";
+    } else {
+	print STDOUT "ok $x\n";
+    }
+    $x++;
+}
 
 use Fwctl;
 use Fwctl::RuleSet;
@@ -18,19 +34,19 @@ my %fwopts = ( aliases_file	=> "test-data/etc/aliases",
 my $fwctl = new Fwctl( %fwopts );
 
 my $if = $fwctl->find_interface( "127.0.0.1" );
-ok( $if->{name}, "LOCAL" );
+test( "find_interface 127.0.0.1", $if->{name}, "LOCAL" );
 $if = $fwctl->find_interface( "INTERNET" );
-ok( $if->{name} , "EXT");
+test( "find_interface INTERNET", $if->{name} , "EXT");
 $if = $fwctl->find_interface( "192.168.1.0/24" );
-ok( $if->{name}, "INT" );
+test( "find_interface 192.168.1.0/24", $if->{name}, "INT" );
 $if = $fwctl->find_interface( "192.168.4.255" );
-ok( $if->{name}, "INT" );
+test( "find_interface 192.168.4.255", $if->{name}, "INT" );
 $if = $fwctl->find_interface( "10.10.10.10" );
-ok( $if->{name}, "EXT" );
+test( "find_interface 10.10.10.10", $if->{name}, "EXT" );
 $if = $fwctl->find_interface( "ANY" );
-ok( $if->{name}, "ANY" );
+test( "find_interface ANY", $if->{name}, "ANY" );
 $if = $fwctl->find_interface( "192.168.1.2" );
-ok( $if->{name}, "INT1" );
+test( "find_interface 192.168.1.2", $if->{name}, "INT1" );
 
 # Test the 16 combination for a telnet connection with
 # each policy. 
@@ -52,7 +68,9 @@ system( "rm -fr test-data/out/*" );
 system( "ipchains-save > saved-chains" ) == 0
   or die "couldn't save current chains: $?\n";
 
-my $shellcmd = q{ ipchains -L -v -n |tail +25 | perl -pe 's|\(.*\)||; s|^ +\d+ +\d+ ||; s|^ pkts bytes ||' };
+my $shellcmd = q{ ipchains -L -v -n |tail +28 | perl -pe 's|\(.*\)||; s|^ +\d+ +\d+ ||; s|^ pkts bytes ||' };
+
+my $stripcmd = q{ perl -pe 's|[\t ]+||g' };
 
 my @SRC	    = qw( ANY INT_IP INT_NET INT_REM_HOST      );
 my @DST	    = qw( ANY PERIM_IP PERIM_NET INTERNET_HOST );
@@ -80,13 +98,21 @@ for my $pol ( @POLICY ) {
 	close RULES;
 	$fwctl = new Fwctl( %fwopts );
 	$fwctl->configure;
-	system( "$shellcmd > test-data/out/$pol-$src-$dst-$masq" ) == 0
+	my $filename = "$pol-$src-$dst-$masq";
+	system( "$shellcmd > test-data/out/$filename" ) == 0
 	  or die "error dumping chains configuration: $?\n";
-	my $result = system( "cmp", "-s", "test-data/out/$pol-$src-$dst-$masq",
-			     "test-data/in/$pol-$src-$dst-$masq" );
-	ok( $result, 0 );
-	# Remote output of test that succeeds.
-	unlink "test-data/out/$pol-$src-$dst-$masq"  if $result == 0;
+
+	# Strip whitespace for comparaison
+	system( "$stripcmd < test-data/out/$filename > test-data/out/$filename.out" );
+	system( "$stripcmd < test-data/in/$filename > test-data/in/$filename.in" );
+
+	my $result = system( "cmp", "-s", "test-data/in/$filename.in",
+			     "test-data/out/$filename.out" );
+	test( $filename, $result, 0 );
+	unlink "test-data/in/$filename.in";
+	unlink "test-data/out/$filename.out";
+	# Remote human readable output of test that succeeds.
+	unlink "test-data/out/$filename"  if $result == 0;
       }
     }
   }
@@ -121,10 +147,20 @@ my %SERVICE_TESTS = (
 		     "accept-hylafax-INT_NET-INT_IP" => "accept hylafax -src INT_NET -dst INT_IP",
 		     "accept-telnet-INT_NET_INTERNET-log" => "accept telnet -src INT_NET -dst INTERNET -log",
 		     "accept-ping-INTERNET-EXT_IP-account-log" => "accept ping -src INTERNET -dst EXT_IP -log -account -name monitoring",
-		  "accept-hylafax-INT_NET-INT_IP"   => "accept hylafax -src INT_NET -dst INT_IP",
-		  "accept-pcanywhere-INT_HOST-INTERNET_HOST" => "accept pcanywhere -src INT_HOST -dst INTERNET_HOST",
-		  "accept-lpd-INT_HOST-INTERNET_HOST"	=> "accept lpd -src INT_HOST -dst INTERNET_HOST",
-		  "accept-telnet-INT_HOST-INT_REM_HOST" => "accept telnet -src INT_HOST -dst INT_REM_HOST",
+		     "accept-hylafax-INT_NET-INT_IP"   => "accept hylafax -src INT_NET -dst INT_IP",
+		     "accept-pcanywhere-INT_HOST-INTERNET_HOST" => "accept pcanywhere -src INT_HOST -dst INTERNET_HOST",
+		     "accept-lpd-INT_HOST-INTERNET_HOST"	=> "accept lpd -src INT_HOST -dst INTERNET_HOST",
+		     "accept-telnet-INT_HOST-INT_REM_HOST" => "accept telnet -src INT_HOST -dst INT_REM_HOST",
+		     "accept-telnet-INT_NETS-INT_REM_HOST" => "accept telnet -src INT_NETS -dst INT_REM_HOST",
+		     "accept-telnet-INT_REM_NETS-INT_REM_HOST" => "accept telnet -src INT_REM_NETS -dst INTERNET_HOST",
+		     "accept-ip_pkt-INT_HOST-INTERNET_HOST" => "accept ip_pkt -src INT_HOST -dst INTERNET_HOST --proto ipip",
+		     "accept-udp_pkt-INT_HOST-INTERNET_HOST" => "accept udp_pkt -src INT_HOST -dst INTERNET_HOST --masq --port 514",
+		     "accept-icmp_pkt-INT_IP-INT_NET" => "accept icmp_pkt -src INT_IP -dst INT_NET --code redirect",
+		     "accept-pptp-INT_HOST-INTERNET_HOST-masq"       => "accept pptp -src INT_HOST  -dst INTERNET_HOST --masq",
+		     "accept-ipsec-INT_HOST-INTERNET_HOST"      => "accept ipsec -src INT_HOST -dst INTERNET_HOST",
+		     "accept-ssh-INTERNET-INT_HOST-portfw"      => "accept ssh -src INTERNET -dst INT_HOST -portfw",
+		     "accept-ftp-INTERNET-INT_HOST-portfw"      => "accept ftp -src INTERNET -dst INT_HOST --portfw --nopasv",
+		     "accept-udp_service-INT_NET-PERIM_HOST-portfw-INT1_IP"      => "accept udp_service -src INT_NET -dst PERIM_HOST --portfw INT1_IP --port 514",
 		    );
 
 #%SERVICE_TESTS = ( 
@@ -139,9 +175,17 @@ for my $name ( sort keys %SERVICE_TESTS) {
   $fwctl->configure;
   system( "$shellcmd > test-data/out/$name" ) == 0
     or die "error dumping chains configuration: $?\n";
-  my $result = system( "cmp", "-s", "test-data/out/$name", "test-data/in/$name" );
-  ok( $result, 0 );
+
+  # Strip whitespace for comparaison
+  system( "$stripcmd < test-data/out/$name > test-data/out/$name.out" );
+  system( "$stripcmd < test-data/in/$name > test-data/in/$name.in" );
+
+  my $result = system( "cmp", "-s", "test-data/in/$name.in",
+		       "test-data/out/$name.out" );
+  test( $name, $result, 0 );
   # Remote output of test that succeeds.
+  unlink "test-data/in/$name.in";
+  unlink "test-data/out/$name.out";
   unlink "test-data/out/$name"  if $result == 0;
 }
 
