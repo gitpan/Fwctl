@@ -1,6 +1,6 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.23
+Version: 0.24
 Release: 1i
 Source: http://iNDev.iNsu.COM/sources/%{name}-%{version}.tar.gz
 Copyright: GPL or Artistic License
@@ -99,6 +99,10 @@ rm -fr $RPM_BUILD_ROOT
 %config(noreplace) %attr(640,root,root) /var/log/fwctl_*
 
 %changelog
+* Wed Jan 26 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.24-1i]
+- Updated to version 0.24.
+
 * Sun Jan 23 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.23-1i]
 - Updated to version 0.23.

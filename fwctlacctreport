@@ -98,10 +98,16 @@ sub center {
 sub summary_report {
     my ( $report, $sample_unit ) = @_;
 
-    print center( COLS, "SUMMARY" );
-    print "\n";
+    print center( COLS, "SUMMARY" ), "\n";
     printf "%-15s %8s %8s %8s %8s\n", "Name", "Pkts", "Pkts/$sample_unit", "Bytes", "Bytes/$sample_unit";
-    foreach my $s ( @{$report->summary_report()} ) {
+
+    my $records = $report->summary_report();
+    unless ( @$records ) {
+	print center( COLS, "NO RECORDS" ), "\n\n";
+	return;
+    }
+
+    foreach my $s ( @$records ) {
 	printf "%-15s %8s %8s %8s %8s\n", $s->{name}, packets_count( $s->{packets_sum} ), packets_count( $s->{packets_avg} ),
 	  bytes_count( $s->{bytes_sum} ), bytes_count( $s->{bytes_avg} );
     }
@@ -128,6 +134,11 @@ sub daily_report {
 
     my $chains = $report->sample_report;
     my @samples = sort { $a->[0] cmp $b->[0] } map { [ $_, $chains->{$_} ] } keys %$chains;
+
+    unless ( @samples ) {
+	print center( COLS, "NO RECORDS" ), "\n\n";
+	return;
+    }
 
     my $num_samples = @{$samples[0][1]};
     my $start  = $samples[0][1][0]{start};
@@ -204,6 +215,11 @@ sub hourly_report {
 
     my $chains = $report->sample_report;
     my @samples = sort { $a->[0] cmp $b->[0] } map { [ $_, $chains->{$_} ] } keys %$chains;
+
+    unless ( @samples ) {
+	print center( COLS, "NO RECORDS" ), "\n\n";
+	return;
+    }
 
     my $num_samples = @{$samples[0][1]};
 

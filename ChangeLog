@@ -1,3 +1,26 @@
+2000-01-26  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* TAG: FWCTL_0_24
+
+	* fwctl.logrotate: Make sure that only one week of report is
+	generated in the postrotate script.
+
+	* Fwctl/Report.pm: (BEGIN) Conditional loading of Date::Manip
+	wasn't working.
+
+	* IPChains/PortFW.pm: (new) Added /sbin:/bin:/usr/sbin:/usr/bin to 
+	PATH.
+
+	* fwctlreport: Fix problem when there are no records, and 
+	output NO RECORDS. Default details report wasn't working properly.
+
+	* fwctlacctreport: Fix problem when there are no records, and 
+	output NO RECORDS.
+
+	* Fwctl.pm: Check for ipchains in PATH at startup. Use die and
+	warn instead than croak and carp for user errors. Incremented
+	version number.
+
 2000-01-23  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
 
 	* TAG: FWCTL_0_23

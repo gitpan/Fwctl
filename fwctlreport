@@ -35,7 +35,13 @@ sub report_format_iterator {
     $~ = $format->{hdr_format};
     write;
     my $setter_func = $format->{record_setter_sub};
-    foreach my $key ( @{ $format->{report_sub}->( $report ) } ) {
+
+    my $records = $format->{report_sub}->( $report );
+    unless ( @$records ) {
+	print " " x 32, "NO RECORDS\n\n";
+	return;
+    }
+    foreach my $key ( @$records ) {
 	$setter_func->( $key->[0] );
 	$~ = $format->{key_format};
 	write;
@@ -55,7 +61,13 @@ sub summary_format_iterator {
     write;
     my $setter_func = $format->{record_setter_sub};
     $~ = $format->{report_format};
-    foreach my $r ( @{ $format->{report_sub}->( $report ) } ) {
+
+    my $records = $format->{report_sub}->( $report );
+    unless ( @$records ) {
+	print " " x 32, "NO RECORDS\n\n";
+	return;
+    }
+    foreach my $r ( @$records ) {
 	$setter_func->( $r );
 	write;
     }
@@ -307,7 +319,7 @@ GetOptions( \%opts, "start=s", "end=s", "period=s", "threshold=s",
 
 usage(0) if $opts{help};
 
-push @{$opts{report}}, "details" unless @{ $opts{report} };
+push @{$opts{report}}, "details" unless exists $opts{report};
 
 $opts{files} = [ @ARGV ];
 my $report = new Fwctl::Report( %opts );

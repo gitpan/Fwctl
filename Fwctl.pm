@@ -13,20 +13,24 @@
 package Fwctl;
 
 use strict;
-use vars qw( $VERSION $PORTFW );
+use vars qw( $VERSION $PORTFW $IPCHAINS );
 
 BEGIN {
-  $VERSION = '0.23';
+  $VERSION = '0.24';
 
   eval { use IPChains::PortFW; new IPChains::PortFW; };
   $PORTFW = 1 unless $@;
+
+  # Look for ipchains
+  ($IPCHAINS) = grep { -x "$_/ipchains" } split /:/, "/sbin:/bin:/usr/sbin:/usr/bin:$ENV{PATH}";
+  die ( "Couldn't find ipchains in PATH ($ENV{PATH})\n" ) unless $IPCHAINS;
+  $IPCHAINS .= "/ipchains";
 }
 
 # Preloaded methods go here.
 use Net::IPv4Addr qw(:all);
 use Getopt::Long;
 use Fcntl qw( :flock );
-use Carp;
 use IPChains;
 
 
@@ -64,7 +68,7 @@ sub new {
 
   # Add services dir to @INC
   eval( join( " ", "use lib qw(", @{ $self->{services_dir} },");" ) );
-  croak __PACKAGE__, ": error while adding services dir to \@INC: $@" if $@;
+  die __PACKAGE__, ": error while adding services dir to \@INC: $@" if $@;
 
   # Read all configuration files
   $self->read_interfaces();
@@ -113,7 +117,7 @@ sub expand {
   my ( $self, $string, $recurs_lvl ) = @_;
   $recurs_lvl ||= 0;
   $recurs_lvl++;
-  croak __PACKAGE__, ": too much alias recursion\n" if $recurs_lvl > 15;
+  die __PACKAGE__, ": too much alias recursion\n" if $recurs_lvl > 15;
   my @expansion = ();
   for my $s (split /\s+/, $string ) {
     if ( $self->alias($s) ) {
@@ -161,9 +165,9 @@ sub service {
 	$new_serv =~ s/_/-/g;
 	$port = getservbyname $new_serv, 'tcp';
       }
-      # If no port could be find, then carp
+      # If no port could be find, then warn
       unless ($port) {
-	carp __PACKAGE__, ": error while loading service $name: $@\n";
+	warn __PACKAGE__, ": error while loading service $name: $@\n";
 	return undef;
       }
     $self->{services}{$name} =
@@ -185,7 +189,7 @@ sub new {
 } . "new Fwctl::Services::$name;";
 
 	if ($@) {
-	    carp __PACKAGE__, ": error while defining tcp_service $name: $@";
+	    warn __PACKAGE__, ": error while defining tcp_service $name: $@";
 	    return undef;
 	}
     }
@@ -435,7 +439,7 @@ sub init_acct {
 
   my $file = $self->{accounting_file};
   open ACCT_FILE, ">>$file"
-    or croak __PACKAGE__, ": can't open accounting file ", $file,
+    or die __PACKAGE__, ": can't open accounting file ", $file,
       ": $!\n";
   my $success = 0;
   for (0..10) {
@@ -443,7 +447,7 @@ sub init_acct {
     last if $success;
     sleep 3;
   }
-  croak __PACKAGE__, ": couldn't obtain lock on accounting file ", 
+  die __PACKAGE__, ": couldn't obtain lock on accounting file ", 
     $file, ": $!\n" unless $success;
 
   my $timestamp = time;
@@ -461,8 +465,8 @@ sub dump_acct {
   my $timestamp = time;
 
   my %chains = ();
-  open IPCHAINS, "ipchains -Z -L -v -x -n|"
-    or croak __PACKAGE__, ": couldn't spawn ipchains: $!\n";
+  open IPCHAINS, "$IPCHAINS -Z -L -v -x -n|"
+    or die __PACKAGE__, ": couldn't fork: $!\n";
   while (<IPCHAINS>) {
     my $chain = undef;
     if ( ($chain) = /^Chain (acct\d{4})/) {
@@ -473,11 +477,12 @@ sub dump_acct {
       $chains{$chain} = [ $pkts, $bytes ];
     }
   }
-  close IPCHAINS;
+  close IPCHAINS
+    or die __PACKAGE__, ": error in ipchains: $?\n";
 
   my $file = $self->{accounting_file};
   open ACCT_FILE, ">>" . $file
-    or croak __PACKAGE__, ": can't open accounting file ", $file,
+    or die __PACKAGE__, ": can't open accounting file ", $file,
       ": $!\n";
   my $success = 0;
   for (0..10) {
@@ -485,7 +490,7 @@ sub dump_acct {
     last if $success;
     sleep 3;
   }
-  croak __PACKAGE__, ": couldn't obtain lock on accounting file ", 
+  die __PACKAGE__, ": couldn't obtain lock on accounting file ", 
     $file, ": $!\n" unless $success;
 
   for my $rule ($self->account_rules) {
@@ -536,7 +541,7 @@ sub configure {
 				     $dst, $dst_if, $options );
 	    last SWITCH;
 	  };
-	  croak __PACKAGE__,  ": unknown action $action\n" ;
+	  die __PACKAGE__,  ": unknown action $action\n" ;
         } #SWITCH
       } #DST
     } #SRC
@@ -622,7 +627,7 @@ sub read_interfaces {
 			   });
 
   open ( INTERFACES, $file )
-    or croak "fwctl: can't open file $file\n";
+    or die "fwctl: can't open file $file\n";
 
   while (<INTERFACES>) {
     next if /^\s*#/;    # Skip comments 
@@ -631,7 +636,7 @@ sub read_interfaces {
 
     my ($name,$if,$rest) =
       m@(\w+)\s+([\w+]+)\s*([^#]+)?@;
-    croak <<ERROR unless $name and $if and $rest;
+    die <<ERROR unless $name and $if and $rest;
 fwctl: invalid interface specification at line $. of file $file
 ERROR
     # Canonicalize interface -> remove aliases.
@@ -649,7 +654,7 @@ ERROR
 			 broadcast  => ipv4_broadcast($network, $msklen),
 			};
       };
-      carp __PACKAGE__, ": bad interface specification at line $. of file $file: $@\n"
+      warn __PACKAGE__, ": bad interface specification at line $. of file $file: $@\n"
 	if $@;
     }
 
@@ -662,7 +667,7 @@ ERROR
 			    });
   }
   close INTERFACES;
-  croak "fwctl: no EXT interface defined." 
+  die "fwctl: no EXT interface defined." 
     unless defined $self->interface('EXT');
 }
 
@@ -692,7 +697,7 @@ sub read_aliases {
   # Read in the additional aliases
   my $file = $self->{aliases_file};
   open ( ALIASES, $file )
-    or croak "fwctl: can't open file $file: $!\n";
+    or die "fwctl: can't open file $file: $!\n";
   while (<ALIASES>) {
     next if /^\s*#/;    # Skip comments 
     next if /^\s*$/;	# Skip blank lines
@@ -724,18 +729,18 @@ sub read_rules {
 
     # Validate rule
     unless ( $action and $service ) {
-      carp __PACKAGE__, ": incomplete rule at line $. of file $file\n";
+      warn __PACKAGE__, ": incomplete rule at line $. of file $file\n";
       next RULE;
     }
 
     $action = uc $action;
     unless ( $ACTIONS{ $action } ) {
-      carp __PACKAGE__, ": unknown action $action at line $. of file $file\n";
+      warn __PACKAGE__, ": unknown action $action at line $. of file $file\n";
       next RULE;
     }
 
     unless ( $self->service( $service ) ) {
-      carp __PACKAGE__, ": unknown service $service at line $. of file $file\n";
+      warn __PACKAGE__, ": unknown service $service at line $. of file $file\n";
       next RULE;
     }
 
@@ -753,31 +758,31 @@ sub read_rules {
       GetOptions( \%options, @STANDARD_OPTIONS,
 		  $self->service($service)->valid_options )
 	or do {
-	  carp __PACKAGE__, ": error while parsing options in service $service\n";
+	  warn __PACKAGE__, ": error while parsing options in service $service\n";
 	  next RULE;
 	};
 
       if (@ARGV ) {
-	carp __PACKAGE__, ": unknown options", join( ",", @ARGV ), "\n";
+	warn __PACKAGE__, ": unknown options", join( ",", @ARGV ), "\n";
 	next RULE;
       }
       if ( $options{portfw} && ! $PORTFW ) {
-	  carp __PACKAGE__, ": can't use portfw because IPChains::PortFW ",
+	  warn __PACKAGE__, ": can't use portfw because IPChains::PortFW ",
 	    "isn't available at line $.\n";
 	  next RULE;
       }
       if ( ($options{masq} || exists $options{portfw} ) && 
 	   $action =~ /reject|deny/i ) 
       {
-	carp __PACKAGE__, ": useless use of masq/portfw option at line $.\n";
+	warn __PACKAGE__, ": useless use of masq/portfw option at line $.\n";
 	next RULE;
       }
       if ($options{masq} && exists $options{portfw} ) {
-	carp __PACKAGE__, ": conflicting use of masq and portfw at line $.\n";
+	warn __PACKAGE__, ": conflicting use of masq and portfw at line $.\n";
 	next RULE;
       }
       if ($options{account} && $action eq "ACCOUNT" ) {
-	carp __PACKAGE__, ": can't use account option with ACCOUNT action at line $.\n";
+	warn __PACKAGE__, ": can't use account option with ACCOUNT action at line $.\n";
 	next RULE;
       }
     };
@@ -790,16 +795,16 @@ sub read_rules {
 	    $options{portfw} = $portfw;
 	};
 	if ( $@ ) {
-	    carp __PACKAGE__, ": invalid aliase expansion in portfw at line $.: $@\n";
+	    warn __PACKAGE__, ": invalid aliase expansion in portfw at line $.: $@\n";
 	    next RULE;
 	}
 
 	if ( $portfw_if->{name} eq 'ANY' ) {
-	    carp __PACKAGE__, ": can't use ANY interface for portfw at line $.\n";
+	    warn __PACKAGE__, ": can't use ANY interface for portfw at line $.\n";
 	    next RULE;
 	}
 	if ( $portfw_if->{ip} ne $portfw ) {
-	    carp __PACKAGE__, ": not a local interface in portfw at line $.\n";
+	    warn __PACKAGE__, ": not a local interface in portfw at line $.\n";
 	    next RULE;
 	}
     }
@@ -811,17 +816,17 @@ sub read_rules {
 	    @src = $self->expand( $options{src} );
 	};
 	if ( $@ ) {
-	    carp __PACKAGE__, ": error in src specification at line $.: $@\n";
+	    warn __PACKAGE__, ": error in src specification at line $.: $@\n";
 	    next RULE;
 	}
 	# Check that all the sources are valid for portforwarding
 	if ( defined $portfw  ) {
 	    foreach my $s ( @src ) {
 		if ( $s->[1]{name} eq 'ANY' ) {
-		    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
+		    warn __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
 		    next RULE;
 		} elsif ( $portfw && $s->[1]{interface} ne $portfw_if->{interface} ) {
-		    carp __PACKAGE__, ": src of portfw doesn't match interface at line $.\n";
+		    warn __PACKAGE__, ": src of portfw doesn't match interface at line $.\n";
 		    next RULE;
 		}
 	    }
@@ -829,7 +834,7 @@ sub read_rules {
 	delete $options{src};
     } else {
 	if ( defined $portfw ) {
- 	    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
+ 	    warn __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
 	    next RULE;
 	} else {
 	    push @src, $self->expand( 'ANY' ) ;
@@ -843,7 +848,7 @@ sub read_rules {
 	    @dst =$self->expand( $options{dst} );
 	};
 	if ( $@ ) {
-	    carp __PACKAGE__, ": error in dst specification at line $.: $@\n";
+	    warn __PACKAGE__, ": error in dst specification at line $.: $@\n";
 	    next RULE;
 	}
 	# Make sure that all destination are compatible with portfw
@@ -853,12 +858,12 @@ sub read_rules {
 		eval {
 		    my ($ip,$cidr) = ipv4_parse( $d->[0] );
 		    unless ( ! defined $cidr || $cidr == 32 ) {
-			carp __PACKAGE__, ": can only use host in dst with portfw $.\n";
+			warn __PACKAGE__, ": can only use host in dst with portfw $.\n";
 			next RULE;
 		    }
 		};
 		if ($@) {
-		    carp __PACKAGE__, ": error in dst specification at line $.: $@\n";
+		    warn __PACKAGE__, ": error in dst specification at line $.: $@\n";
 		    next RULE;
 		}
 	    }
@@ -866,7 +871,7 @@ sub read_rules {
 	delete $options{dst};
     } else {
 	if ( defined $portfw ) {
- 	    carp __PACKAGE__, ": can't use portfw with ANY dst at line $.\n";
+ 	    warn __PACKAGE__, ": can't use portfw with ANY dst at line $.\n";
 	    next RULE;
 	} else {
 	    push @dst, $self->expand( 'ANY' );
@@ -913,7 +918,7 @@ sub read_rules {
     $error--;
   }
   close RULES;
-  croak __PACKAGE__, ": error while reading rules. Aborting\n" if $error;
+  die __PACKAGE__, ": error while reading rules. Aborting\n" if $error;
 }
 
 1;

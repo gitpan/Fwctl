@@ -15,14 +15,13 @@ package IPChains::PortFW;
 use strict;
 
 use Carp;
-
 use Symbol;
 
 use vars qw( $VERSION $IPMASQADM );
 
 BEGIN {
 
-  ($VERSION) = '$Revision: 1.1 $' =~ /Revision: ([0-9.]+)/;
+  ($VERSION) = '$Revision: 1.2 $' =~ /Revision: ([0-9.]+)/;
 
 }
 
@@ -37,8 +36,8 @@ sub new {
     my $self = { };
 
     # Look for ipmasqadm
-    my ($path) = grep { -x "$_/ipmasqadm" } split /:/, $ENV{PATH};
-    croak ( "Couldn't find ipmasqadm in PATH ($ENV{PATH})" ) unless $path;
+    my ($path) = grep { -x "$_/ipmasqadm" } split /:/, "/sbin:/bin:/usr/sbin:/usr/bin:$ENV{PATH}";
+    die ( "Couldn't find ipmasqadm in PATH ($ENV{PATH})\n" ) unless $path;
     $self->{ipmasqadm} = "$path/ipmasqadm";
 
     bless $self, $class;
@@ -77,10 +76,10 @@ sub run_portfw {
 
     my ($r_fh,$w_fh) = (gensym,gensym);
     pipe $r_fh, $w_fh
-      or croak "can't pipe: $!";
+      or die "can't pipe: $!\n";
 
     my $pid = fork;
-    croak( "can't fork: $!" ) unless defined $pid;
+    die "can't fork: $!\n" unless defined $pid;
 
     if ( $pid ) {
 	# Don't need this one

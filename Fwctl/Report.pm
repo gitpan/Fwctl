@@ -55,7 +55,7 @@ etc.)
 =cut
 
 BEGIN {
-    ($VERSION) = '$Revision: 1.2 $' =~ /(Revision: ([\d.]+))/;
+    ($VERSION) = '$Revision: 1.3 $' =~ /(Revision: ([\d.]+))/;
     @ISA = qw( Exporter );
 
     @EXPORT = ();
@@ -77,7 +77,7 @@ BEGIN {
 
 BEGIN {
     $DATE_MANIP = 0;
-    eval { use Date::Manip; };
+    eval "use Date::Manip;";
     $DATE_MANIP = 1 unless $@;
 }
 

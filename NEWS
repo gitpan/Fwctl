@@ -1,12 +1,30 @@
-Fwctl NEWS -- history of user-visible changes.  23 Jan 2000
+Fwctl NEWS -- History of User-Visible Changes.  Jan 26 2000
+
+* Changes in fwctl 0.24
+
+** Miscellaneous enhancements:
+    - Write NO RECORDS when no records are found in a report's period.
+    - Use carp and croak only for programmer's errors.
+    - Check for path of ipchains at startup.
+    - Make sure that the logrotate script generates only a one week report.
+ 
+** Bug fixes:
+    - Error when Date::Manip module wasn't present.
+    - For some reports, there was an error when no records we found for 
+      the report's period.
+    - When dumping accounting stats, there was a silent error when ipchains
+      couldn't be found in the PATH.
+
+
+Fwctl NEWS -- History of User-Visible Changes.  Jan 23 2000
 
 * Changes in fwctl 0.23
 
 ** New report generation tools.
 
     - fwctlog: Transforms kernel packet log messages into an intermediate
-      format that can be used to generates report.
-    - fwctlreport: Can generates 15 different reports with various parameters
+      format which can be used to generate reports.
+    - fwctlreport: Can generate 15 different reports with various parameters
       from the output of fwctlog.
     - fwctlacctlog: Generates report for accounting statistics dumped by the 
       fwctl dump-acct command.
@@ -18,12 +36,12 @@ Fwctl NEWS -- history of user-visible changes.  23 Jan 2000
 
    An interface can now be associated with an alias. You can tag
    hosts and networks expansion with the name of the interface in
-   parentheses. This will override the default interface guessing mechanism.
+   parenthesis. This will override the default interface guessing mechanism.
    It is only useful when you have multiple interfaces with the same
-   IP address (as occuring with IPSec). All default aliases are tagged
+   IP address (as occurring with IPSec). All default aliases are tagged
    with their respective interface.
 
-   Example :
+   Example:
 
    VPN_CLIENT1 = 192.168.4.1(VPN1)
    
@@ -31,17 +49,17 @@ Fwctl NEWS -- history of user-visible changes.  23 Jan 2000
 ** Support for generic IP forwarding.
 
    It is now possible to generate rules for non tcp/udp << port >> 
-   forwarding. You still have to start the ipfwd daemon separately. The
-   PPTP and IPSec services takes advantage of this new features to
+   forwarding. You still have to start the ipfwd daemon seperately. The
+   PPTP and IPSec services take advantage of this new feature to
    support the --portfw option.
 
 ** Bug fixes:
 	- Missing optional ipmasqadm triggered a configuration time error.
-	- Allow device wildcards (ppp+) in interfaces configuration.
+	- Allow device wildcards (ppp+) in interface configuration.
 	- Masquerading of the ftp port data connection.
 
 
-Fwctl NEWS -- history of user-visible changes.  17 Dec 1999
+Fwctl NEWS -- History of User-Visible Changes.  Dec 17 1999
 
 * Changes in fwctl 0.22
 
