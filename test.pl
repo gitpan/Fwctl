@@ -6,7 +6,7 @@ $| = 1;
 $x = 1;
 
 BEGIN {
-    print "1..126\n";
+    print "1..131\n";
 }
 
 sub test {
@@ -96,9 +96,16 @@ for my $pol ( @POLICY ) {
 	  or die "couldn't open rules file for writing: $!\n";
 	print RULES "$pol telnet -src $src -dst $dst -$masq\n";
 	close RULES;
-	$fwctl = new Fwctl( %fwopts );
-	$fwctl->configure;
+	eval {
+	    $fwctl = new Fwctl( %fwopts );
+	    $fwctl->configure;
+	};
 	my $filename = "$pol-$src-$dst-$masq";
+	if ( $@ ) {
+	    print $@;
+	    test( $filename, 1, 0 );
+	    next;
+	}
 	system( "$shellcmd > test-data/out/$filename" ) == 0
 	  or die "error dumping chains configuration: $?\n";
 
@@ -161,6 +168,11 @@ my %SERVICE_TESTS = (
 		     "accept-ssh-INTERNET-INT_HOST-portfw"      => "accept ssh -src INTERNET -dst INT_HOST -portfw",
 		     "accept-ftp-INTERNET-INT_HOST-portfw"      => "accept ftp -src INTERNET -dst INT_HOST --portfw --nopasv",
 		     "accept-udp_service-INT_NET-PERIM_HOST-portfw-INT1_IP"      => "accept udp_service -src INT_NET -dst PERIM_HOST --portfw INT1_IP --port 514",
+		     "accept-pptp-INTERNET-INT_HOST-portfw-EXT_IP"      => "accept pptp -src INTERNET -dst INT_HOST --portfw EXT_IP",
+		     "accept-ftp-INT_NET-INTERNET-masq"      => "accept ftp -src INT_NET -dst INTERNET --masq",
+		     "accept-telnet-VPN_CLIENT1-VPN1_IP"     => "accept telnet -src VPN_CLIENT1 -dst VPN1_IP",
+		     "accept-telnet-VPN_CLIENT2-VPN2_IP"     => "accept telnet -src VPN_CLIENT2 -dst VPN2_IP",
+		     "accept-telnet-VPN_CLIENT2-INT_NET"     => "accept telnet -src VPN_CLIENT2 -dst INT_NET",
 		    );
 
 #%SERVICE_TESTS = ( 
@@ -171,8 +183,15 @@ for my $name ( sort keys %SERVICE_TESTS) {
     or die "couldn't open rules file for writing: $!\n";
   print RULES $rule, "\n";
   close RULES;
-  $fwctl = new Fwctl( %fwopts );
-  $fwctl->configure;
+  eval {
+      $fwctl = new Fwctl( %fwopts );
+      $fwctl->configure;
+  };
+  if ( $@ ) {
+      print $@;
+      test( $name, 1, 0 );
+      next;
+  }
   system( "$shellcmd > test-data/out/$name" ) == 0
     or die "error dumping chains configuration: $?\n";
 

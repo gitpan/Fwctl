@@ -10,4 +10,5 @@ WriteMakefile(
 	      PREREQ_PM	    => { Net::IPv4Addr => 0.06,
 				 IPChains => 0,
 			       },
+	      EXE_FILES => [ qw(fwctl fwctlreport fwctllog fwctlacctreport) ],
 );

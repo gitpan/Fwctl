@@ -16,9 +16,9 @@ use strict;
 use vars qw( $VERSION $PORTFW );
 
 BEGIN {
-  $VERSION = '0.22';
+  $VERSION = '0.23';
 
-  eval "use IPChains::PortFW";
+  eval { use IPChains::PortFW; new IPChains::PortFW; };
   $PORTFW = 1 unless $@;
 }
 
@@ -75,7 +75,7 @@ sub new {
   $self;
 };
 
-# Get or sets the interfaces. 
+# Get or sets the interfaces.
 sub interfaces {
   my $self = shift;
 
@@ -108,7 +108,7 @@ sub alias {
   $self->{aliases}{$name};
 }
 
-# Expand an alias recursively
+# Expand an alias recursively into interface and parsed IP.
 sub expand {
   my ( $self, $string, $recurs_lvl ) = @_;
   $recurs_lvl ||= 0;
@@ -119,7 +119,23 @@ sub expand {
     if ( $self->alias($s) ) {
       push @expansion, $self->expand( $self->alias($s), $recurs_lvl );
     } else {
-      push @expansion, $s;
+	if ( $s eq "INTERNET" ) {
+	    push @expansion, [ "0.0.0.0/0", $self->interface( 'EXT' ) ];
+	} elsif ( $s eq "ANY" ) {
+	    push @expansion, [ "0.0.0.0/0", $self->interface( 'ANY' ) ];
+	} else {
+	    my ( $ipv4, $if ) = $s =~ m!([0-9./]+)(?:\((\w+)\))?!;
+	    if ( defined $if ) {
+		$if = $self->interface( $if );
+		die "invalid interface spec in alias expansion: $if\n" unless $if;
+	    }
+	    eval {
+		$ipv4 = ipv4_parse( $ipv4 );
+	    };
+	    die "invalid ip address : $ipv4\n" if $@;
+	    $if = $self->find_interface( $ipv4 ) unless defined $if;
+	    push @expansion, [$ipv4, $if];
+	}
     }
   }
   return @expansion;
@@ -201,6 +217,43 @@ sub rules {
   $self->{rules};
 }
 
+# Given an host, find the alias to which this one is
+# related. We return the most specific one. Least specific is
+# INTERNET.
+sub find_host_alias {
+    my ( $self, $ip ) = @_;
+
+    # Try to find the alias as an IP
+    $ip =~ s/\.0+(\d)/\.$1/g; # Normalize .001 -> .1 .000 .0
+    while ( my ( $alias, $expansion ) = each %{$self->{aliases}} ) {
+	my @aliases = split /\s+/, $expansion;
+	# We don't need to recurse since recursive alias are necesserarly
+	# less specific
+	foreach my $a ( @aliases ) {
+	    $a =~ s/\.0+(\d)/\.$1/g;	# Canonicalize
+	    $a =~ s/\(\w+\)//g;		# Remove interface spec
+	    return $alias if $a eq $ip;
+	}
+    }
+
+    # Try to find as included in a subnet.
+    while ( my ( $alias, $expansion ) = each %{$self->{aliases}} ) {
+	# Skip ANY_ alias
+	next if index ( $alias, "ANY") == 0;
+	my @aliases = split /\s+/, $expansion;
+
+	foreach my $a ( @aliases ) {
+	    $a =~ s/\(\w+\)//g;		# Remove interface spec
+	    # Try not to compare aliase
+	    next unless $a =~ m!^[\d/.]+$!;
+	    return $alias if ipv4_in_network( $a, $ip );
+	}
+    }
+
+    # Default
+    return 'INTERNET';
+}
+
 # Given an IP, network or whatever, find the target
 # interface.
 sub find_interface {
@@ -240,6 +293,18 @@ sub find_interface {
 
   # Default is Internet
   return $self->interface('EXT');
+}
+
+# This breaks in regards to virtual interface
+sub find_interface_by_dev {
+    my ( $self, $dev ) = @_;
+
+    foreach my $if ( $self->interfaces ) {
+	return $if->{name} if $if->{interface} eq $dev;
+    }
+
+    # Not found
+    return undef;
 }
 
 sub reset_fw {
@@ -447,17 +512,11 @@ sub configure {
     my $service = $self->service( $rule->{service} );
     my $options = $rule->{options};
   SRC:
-    foreach my $src ( @{$rule->{src}} ) {
+    foreach my $src_spec ( @{$rule->{src}} ) {
     DST:
-      foreach my $dst ( @{$rule->{dst}} ) {
-	my $src_if = $self->find_interface( $src );
-	my $dst_if = $self->find_interface( $dst );
-
-	# ANY	    matches all packets on all interfaces
-	# INTERNET  matches all packets on the EXT interface.
-
-	$src = "0.0.0.0/0" if $src =~ /ANY|INTERNET/i;
-	$dst = "0.0.0.0/0" if $dst =~ /ANY|INTERNET/i;
+      foreach my $dst_spec ( @{$rule->{dst}} ) {
+	  my ( $src, $src_if ) = @$src_spec;
+	  my ( $dst, $dst_if ) = @$dst_spec;
 
       SWITCH:
 	for ($action) {
@@ -571,7 +630,7 @@ sub read_interfaces {
     chomp;
 
     my ($name,$if,$rest) =
-      m@(\w+)\s+(\w+)\s*([^#]+)?@;
+      m@(\w+)\s+([\w+]+)\s*([^#]+)?@;
     croak <<ERROR unless $name and $if and $rest;
 fwctl: invalid interface specification at line $. of file $file
 ERROR
@@ -613,23 +672,21 @@ sub read_aliases {
   # Defined common aliases for each of the interface
   foreach my $if ( $self->interfaces ) {
     my $name	    = uc $if->{name};
-    my $if_alias    = $name . "_IF";
     my $ip_alias    = $name . "_IP";
     my $net_alias   = $name . "_NET";
     my $rem_alias   = $name . "_REM_NETS";
     my $nets_alias  = $name . "_NETS";
     my $bcast_alias = $name . "_BCAST";
-    my $net = $if->{network} . "/" . $if->{netmask};
-    my $nets = [ $net ];
+    my $net = $if->{network} . "/" . $if->{netmask} . "(" . $name . ")";
+    my $nets = [ $net  ];
     foreach my $n ( @{$if->{other_nets} }) {
-      push @$nets, $n->{network} . "/" . $n->{netmask};
+      push @$nets, $n->{network} . "/" . $n->{netmask} . "(" . $name . ")";
     }
-    $self->alias( $if_alias, $if->{interface} );
-    $self->alias($net_alias, $net );
-    $self->alias($ip_alias,  $if->{ip} );
+    $self->alias($net_alias, $net  );
+    $self->alias($ip_alias,  $if->{ip} . "(" . $name . ")" );
     $self->alias($nets_alias, join( " ", @$nets ) );
     $self->alias($rem_alias, join( " ", @{$nets}[ 1 .. $#$nets ] ) );
-    $self->alias( $bcast_alias, $if->{broadcast} );
+    $self->alias( $bcast_alias, $if->{broadcast}, "(" . $name . ")" );
   }
 
   # Read in the additional aliases
@@ -728,18 +785,15 @@ sub read_rules {
     # Parse portfw
     my ($portfw,$portfw_if) = ( $options{portfw} );
     if ( $portfw ) {
-	$portfw = $self->alias( $portfw );
 	eval {
-	    ($options{portfw}) = ($portfw) = ipv4_parse( $portfw );
+	    ($portfw, $portfw_if ) = @{($self->expand( $portfw ))[0]};
+	    $options{portfw} = $portfw;
 	};
 	if ( $@ ) {
-	    carp __PACKAGE__, ": invalid ipv4 address in portfw at line $.\n";
+	    carp __PACKAGE__, ": invalid aliase expansion in portfw at line $.: $@\n";
 	    next RULE;
 	}
 
-	# Find the local interface which is attached to this address
-	$portfw_if = $self->find_interface( $portfw );
-	
 	if ( $portfw_if->{name} eq 'ANY' ) {
 	    carp __PACKAGE__, ": can't use ANY interface for portfw at line $.\n";
 	    next RULE;
@@ -749,103 +803,73 @@ sub read_rules {
 	    next RULE;
 	}
     }
-      
+
     # Parse src
     my @src = ();
     if ( $options{src} ) {
-	my $src = $options{src};
-	foreach my $s ( $self->expand( $src ) ) {
-	    if ( $s =~ /INTERNET/i ) {
-		if ( $portfw && $portfw_if->{name} ne 'EXT' ) {
-		    carp __PACKAGE__, ": can't src of portfw doesn't match ",
-		      "interface at line $.\n";
-		    next RULE;
-		}
-		push @src, "INTERNET";
-	    } elsif ($s =~ /ANY/i ) {
-		if ( defined $portfw ) {
+	eval {
+	    @src = $self->expand( $options{src} );
+	};
+	if ( $@ ) {
+	    carp __PACKAGE__, ": error in src specification at line $.: $@\n";
+	    next RULE;
+	}
+	# Check that all the sources are valid for portforwarding
+	if ( defined $portfw  ) {
+	    foreach my $s ( @src ) {
+		if ( $s->[1]{name} eq 'ANY' ) {
 		    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
 		    next RULE;
-		} else {
-		    push @src, "ANY";
-		}
-	    } else {
-		eval {
-		    push @src, scalar ipv4_parse( $s );
-		};
-		if ($@) {
-		    carp __PACKAGE__, ": error in src $src at line $.\n";
+		} elsif ( $portfw && $s->[1]{interface} ne $portfw_if->{interface} ) {
+		    carp __PACKAGE__, ": src of portfw doesn't match interface at line $.\n";
 		    next RULE;
-		}
-		if ( $portfw  ) {
-		    my $if = $self->find_interface( $src[ $#src ] );
-		    if ( $if->{interface} ne $portfw_if->{interface} ) {
-			carp __PACKAGE__, ": src of portfw doesn't match ",
-			  "interface at line $.\n";
-			next RULE;
-		    }
 		}
 	    }
 	}
 	delete $options{src};
     } else {
 	if ( defined $portfw ) {
-	    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
+ 	    carp __PACKAGE__, ": can't use portfw with ANY src at line $.\n";
 	    next RULE;
 	} else {
-	    push @src, "ANY";
+	    push @src, $self->expand( 'ANY' ) ;
 	}
     }
 
     # Parse dst
     my @dst = ();
     if ( $options{dst} ) {
-	my $dst = $options{dst};
-	foreach my $d ( $self->expand($dst) ) {
-	    if ( defined $portfw ) {
+	eval {
+	    @dst =$self->expand( $options{dst} );
+	};
+	if ( $@ ) {
+	    carp __PACKAGE__, ": error in dst specification at line $.: $@\n";
+	    next RULE;
+	}
+	# Make sure that all destination are compatible with portfw
+	if ( defined $portfw ) {
+	    foreach my $d ( @dst ) {
 		# With portfw only host can be used as dst.
-		if ( $d =~ /INTERNET|ANY/i ) {
-		    carp __PACKAGE__, ": can only use host in dst with ",
-		      "portfw $.\n";
+		eval {
+		    my ($ip,$cidr) = ipv4_parse( $d->[0] );
+		    unless ( ! defined $cidr || $cidr == 32 ) {
+			carp __PACKAGE__, ": can only use host in dst with portfw $.\n";
+			next RULE;
+		    }
+		};
+		if ($@) {
+		    carp __PACKAGE__, ": error in dst specification at line $.: $@\n";
 		    next RULE;
-		} else {
-		    eval {
-			my ($ip,$cidr) = ipv4_parse( $d );
-			unless ( ! defined $cidr || $cidr == 32 ) {
-			    carp __PACKAGE__, ": can only use host in ",
-			      "dst with portfw $.\n";
-			    next RULE;
-			}
-			push @dst, $ip;
-		    };
-		    if ($@) {
-			carp __PACKAGE__, ": error in dst $dst at line $.\n";
-			next RULE;
-		    }
-		}
-	    } else {
-		if ( $d =~ /INTERNET/i ) {
-		    push @dst, "INTERNET";
-		} elsif ($d =~ /ANY/i ) {
-		    push @dst, "ANY";
-		} else {
-		    eval {
-			push @dst, scalar ipv4_parse( $d );
-		    };
-		    if ($@) {
-			carp __PACKAGE__, ": error in dst $dst at line $.\n";
-			next RULE;
-		    }
 		}
 	    }
 	}
 	delete $options{dst};
     } else {
 	if ( defined $portfw ) {
-	    carp __PACKAGE__, ": can't use portfw with ANY dst at line $.\n";
+ 	    carp __PACKAGE__, ": can't use portfw with ANY dst at line $.\n";
 	    next RULE;
 	} else {
-	    push @dst, "ANY";
+	    push @dst, $self->expand( 'ANY' );
 	}
     }
 
@@ -1064,15 +1088,30 @@ read the predefined aliases section.
 
 =item EXPANSION
 
-This is what the alias expands to. This can be a space separated list 
-of host or network specification or other alias. 
+This is what the alias expands to. This can be a space separated list
+of host or network specification or other alias.
+
+The host or network expansion can also be tagged with an interface
+name which specifies which interface is associated with that alias and
+that will be use for routing logic. If you don't specify an interface
+Fwctl will figure out which interface is associated to the host or
+network using conventional routing logic. Be warned though that if you
+have interfaces that shares the same IP or have the same network
+attached if won't do probably what you intended. If all interfaces
+have distinctive IP and networks it will be probably fine tough.
+
+Example :
+
+    VPN_CLIENT1 = 192.168.2.10(VPN1)
+
 
 =back
 
 Aliases are recursively expanded. Please avoid infinite recursion or you
 will get a complaint at parse time.
 
-Here is a list of predefined aliases.
+Here is a list of predefined aliases. (All those aliases are associated
+with their interface for routing pupose).
 
 =over
 

@@ -10,6 +10,9 @@ MANIFEST.SKIP
 NEWS
 Makefile.PL
 fwctl
+fwctlacctreport
+fwctllog
+fwctlreport
 fwctl.cron
 fwctl.logrotate
 test.pl
@@ -27,6 +30,8 @@ debian/rules
 debian/docs
 debian/fwctl.cron
 Fwctl.pm
+Fwctl/AcctReport.pm
+Fwctl/Report.pm
 Fwctl/Services/udp_service.pm
 Fwctl/Services/tcp_service.pm
 Fwctl/Services/netbios.pm
@@ -182,3 +187,8 @@ test-data/in/accept-telnet-INT_NETS-INT_REM_HOST
 test-data/in/accept-telnet-INT_REM_NETS-INT_REM_HOST
 test-data/in/accept-udp_pkt-INT_HOST-INTERNET_HOST
 test-data/in/accept-udp_service-INT_NET-PERIM_HOST-portfw-INT1_IP
+test-data/in/accept-ftp-INT_NET-INTERNET-masq
+test-data/in/accept-pptp-INTERNET-INT_HOST-portfw-EXT_IP
+test-data/in/accept-telnet-VPN_CLIENT1-VPN1_IP
+test-data/in/accept-telnet-VPN_CLIENT2-INT_NET
+test-data/in/accept-telnet-VPN_CLIENT2-VPN2_IP

@@ -52,7 +52,7 @@ BEGIN {
   Exporter::export_ok_tags( keys %EXPORT_TAGS );
 
   # Optional module
-  eval "use IPChains::PortFW";
+  eval { use IPChains::PortFW };
 }
 
 
@@ -197,9 +197,6 @@ sub accept_ip_ruleset {
 
   # Check masquerading parameter.
   $masq = NOMASQ unless defined $masq;
-
-  croak __PACKAGE__, ": can't use \$portfw with protocol other than TCP or UDP"
-    if defined $portfw && $base !~ /udp|tcp|syn|ack/;
 
  SWITCH:
   for ("$src_kind-$dst_kind" ) {
@@ -404,8 +401,7 @@ sub ip_forward_ruleset {
       if ($base =~ /tcp|ack|syn|udp/ ) {
 	  tcpudp_portfw_forward_ruleset( @_ );
       } else {
-	  croak __PACKAGE__,
-	    "can't use portfw with other protocol than udp or tcp";
+	  ip_portfw_forward_ruleset( @_ );
       }
   } else {
     $ipchain->attribute( Interface => $src_if->{interface} );
@@ -613,6 +609,24 @@ sub tcpudp_portfw_forward_ruleset {
 					 );
   $portfw_chain->append;
 
+}
+
+# We just set up the rules here. The user will have
+# to set the ipfwd daemon manually
+sub ip_portfw_forward_ruleset {
+  my ( $ipchain, $src, $src_if, $dst, $dst_if, $base, $masq, $portfw ) = @_;
+  $portfw ||= $src_if->{ip};
+
+  # Incoming address is in $portfw
+  $ipchain->attribute( Interface => $src_if->{interface} );
+  $ipchain->attribute( Dest => $portfw );
+  $ipchain->append( "$base-in" );
+
+  $ipchain->attribute( Dest => $dst );
+
+  $ipchain->attribute( Interface => $dst_if->{interface} );
+  $ipchain->append( "$base-fwd" );
+  $ipchain->append( "$base-out" );
 }
 
 sub block_tcp_ruleset {

@@ -88,6 +88,7 @@ sub accept_rules {
   my $do_pasv = $options->{pasv};
   $do_pasv = $self->{pasv} unless defined $do_pasv;
   my $do_port = $options->{port};
+
   $do_port = $self->{pasv} unless defined $do_port;
 
   my ($ftp,$pasv,$port) = $self->prototypes( $target, $options );
@@ -118,13 +119,23 @@ sub accept_rules {
 
 	  accept_ip_ruleset( $port, $src, $src_if, $dst, $dst_if,
 			     PORTFW, $options->{portfw} );
-      } else {
-	  accept_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if,
-			      $masq );
-      }
-      if ($options->{masq}) {
+      } elsif ( $masq & MASQ ) {
+	  # The data ports destination were rewritten.
+	  accept_ip_ruleset( $port, $dst, $dst_if, $src, $src_if, UNMASQ );
+
+	  $port->attribute( 'SYN',  '!' );
+	  my $src_port = $port->attribute( 'SourcePort' );
+	  my $dst_port = $port->attribute( 'DestPort' );
+	  $port->attribute( 'DestPort',	    $src_port );
+	  $port->attribute( 'SourcePort',   $dst_port );
+
+	  accept_ip_ruleset( $port, $src, $src_if, $dst, $dst_if, MASQ );
+
+	  # Load the necessary kernel module.
 	  system ( "/sbin/modprobe", "ip_masq_ftp" ) == 0
 	    or carp __PACKAGE__, ": couldn't load ip_masq_ftp: $?\n";
+      } else {
+	  accept_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if );
       }
   }
 }
@@ -154,8 +165,24 @@ sub account_rules {
 	  acct_ip_ruleset( $port, $dst, $dst_if, $src, $src_if,
 			     UNPORTFW, $options->{portfw} );
 	  $port->{SYN} = '!';
+	  my $src_port = $port->attribute( 'SourcePort' );
+	  my $dst_port = $port->attribute( 'DestPort' );
+	  $port->attribute( 'DestPort',	    $src_port );
+	  $port->attribute( 'SourcePort',   $dst_port );
+
 	  acct_ip_ruleset( $port, $src, $src_if, $dst, $dst_if,
 			     PORTFW, $options->{portfw} );
+      } elsif ( $masq & MASQ ) {
+	  # The data ports destination were rewritten. 
+	  acct_ip_ruleset( $port, $dst, $dst_if, $src, $src_if, UNMASQ );
+
+	  $port->attribute( 'SYN',  '!' );
+	  my $src_port = $port->attribute( 'SourcePort' );
+	  my $dst_port = $port->attribute( 'DestPort' );
+	  $port->attribute( 'DestPort',	    $src_port );
+	  $port->attribute( 'SourcePort',   $dst_port );
+
+	  acct_ip_ruleset( $port, $src, $src_if, $dst, $dst_if, MASQ );
       } else {
 	  accept_tcp_ruleset( $port, $dst, $dst_if, $src, $src_if,
 			      $masq );

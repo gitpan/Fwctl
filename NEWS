@@ -1,10 +1,53 @@
+Fwctl NEWS -- history of user-visible changes.  23 Jan 2000
+
+* Changes in fwctl 0.23
+
+** New report generation tools.
+
+    - fwctlog: Transforms kernel packet log messages into an intermediate
+      format that can be used to generates report.
+    - fwctlreport: Can generates 15 different reports with various parameters
+      from the output of fwctlog.
+    - fwctlacctlog: Generates report for accounting statistics dumped by the 
+      fwctl dump-acct command.
+
+   The example cron and logrotate configuration files uses those tools to 
+   generate daily and weekly reports.
+
+** Support for multiple interfaces with same IP.
+
+   An interface can now be associated with an alias. You can tag
+   hosts and networks expansion with the name of the interface in
+   parentheses. This will override the default interface guessing mechanism.
+   It is only useful when you have multiple interfaces with the same
+   IP address (as occuring with IPSec). All default aliases are tagged
+   with their respective interface.
+
+   Example :
+
+   VPN_CLIENT1 = 192.168.4.1(VPN1)
+   
+   
+** Support for generic IP forwarding.
+
+   It is now possible to generate rules for non tcp/udp << port >> 
+   forwarding. You still have to start the ipfwd daemon separately. The
+   PPTP and IPSec services takes advantage of this new features to
+   support the --portfw option.
+
+** Bug fixes:
+	- Missing optional ipmasqadm triggered a configuration time error.
+	- Allow device wildcards (ppp+) in interfaces configuration.
+	- Masquerading of the ftp port data connection.
+
+
 Fwctl NEWS -- history of user-visible changes.  17 Dec 1999
 
 * Changes in fwctl 0.22
 
 ** Support for port forwarding with TCP and UDP based services. You can
    now use a --portfw [ip] option with most services to specify one of the
-   firewall's ip address from which the service will be redirect to its
+   firewall's ip address from which the service will be redirected to its
    destination. 
 
 ** New services: ip_pkt, udp_pkt, icmp_pkt, pptp and ipsec.

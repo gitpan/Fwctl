@@ -1,6 +1,6 @@
 Summary: Program to control the firewall with high level syntax
 Name: Fwctl
-Version: 0.22
+Version: 0.23
 Release: 1i
 Source: http://iNDev.iNsu.COM/sources/%{name}-%{version}.tar.gz
 Copyright: GPL or Artistic License
@@ -18,7 +18,8 @@ Requires: perl(IPChains::PortFW)
 %description
 Fwctl is a module to configure the Linux kernel packet filtering firewall
 using higher level abstraction than rules on input, output and forward
-chains. It supports masquerading and accounting as well.
+chains. It supports masquerading and accounting as well. There is also
+a powerful report generation utility.
 
 %prep
 %setup -q
@@ -28,7 +29,7 @@ find -type f -exec sh -c 'if head -c 100 $0 | grep -q "^#!.*perl"; then \
 
 %build
 perl Makefile.PL 
-make OPTIMIZE="$RPM_OPT_FLAGS"
+make OPTIMIZE="$RPM_OPT_FLAGS" MAN1EXT=8
 #make test
 
 %install
@@ -36,21 +37,12 @@ rm -fr $RPM_BUILD_ROOT
 eval `perl '-V:installarchlib'`
 mkdir -p $RPM_BUILD_ROOT/$installarchlib
 make 	PREFIX=$RPM_BUILD_ROOT/usr \
-	INSTALLMAN1DIR=$RPM_BUILD_ROOT/usr/man/man1 \
+	MAN1EXT=8 \
+	INSTALLBIN=$RPM_BUILD_ROOT/usr/sbin \
+	INSTALLSCRIPT=$RPM_BUILD_ROOT/usr/sbin \
+	INSTALLMAN1DIR=$RPM_BUILD_ROOT/usr/man/man8 \
    	INSTALLMAN3DIR=$RPM_BUILD_ROOT/`dirname $installarchlib`/man/man3 \
    	pure_install
-
-pod2man --section=8 --release=%{version} fwctl  > fwctl.8
-mkdir -p $RPM_BUILD_ROOT/usr/man/man8
-install -m644 fwctl.8 $RPM_BUILD_ROOT/usr/man/man8
-
-umask 007
-mkdir -p $RPM_BUILD_ROOT/{usr/sbin,etc/{fwctl,cron.hourly,rc.d/init.d,logrotate.d}}
-install -m 750 fwctl $RPM_BUILD_ROOT/usr/sbin
-install -m 750 fwctl.init $RPM_BUILD_ROOT/etc/rc.d/init.d/fwctl
-install -m 750 fwctl.cron $RPM_BUILD_ROOT/etc/cron.hourly/fwctl_acct
-install -m 750 fwctl.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/fwctl
-install -m 640 etc/* $RPM_BUILD_ROOT/etc/fwctl
 
 # Fix packing list
 for packlist in `find $RPM_BUILD_ROOT -name '.packlist'`; do
@@ -64,11 +56,22 @@ find $RPM_BUILD_ROOT -type d -path '*/usr/lib/perl5/site_perl/5.005/*' \
     -not -path '*/auto' -not -path "*/*-linux" -not -path '*/IPChains' | \
     sed -e "s!$RPM_BUILD_ROOT!%dir !" > %{name}-file-list
     
-find $RPM_BUILD_ROOT/usr/lib/perl5 -type f -o -type l | \
+find $RPM_BUILD_ROOT/usr -not -type d | \
 	grep -v perllocal.pod | \
 	sed -e "s|$RPM_BUILD_ROOT||g" >> %{name}-file-list
 
 perl -n -i -e 'print "%doc " if m!man/man|\.pod!; print; ' %{name}-file-list
+
+umask 007
+mkdir -p $RPM_BUILD_ROOT/{usr/sbin,etc/{fwctl,cron.d,rc.d/init.d,logrotate.d}}
+install -m 750 fwctl.init $RPM_BUILD_ROOT/etc/rc.d/init.d/fwctl
+install -m 640 fwctl.cron $RPM_BUILD_ROOT/etc/cron.d/fwctl
+install -m 640 fwctl.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/fwctl
+install -m 640 etc/* $RPM_BUILD_ROOT/etc/fwctl
+
+mkdir -p $RPM_BUILD_ROOT/var/log
+touch $RPM_BUILD_ROOT/var/log/{fwctl_acct,fwctl_log}
+chmod 640 $RPM_BUILD_ROOT/var/log/*
 
 %post 
 if [ "$1" = 1 ]; then
@@ -85,18 +88,25 @@ rm -fr $RPM_BUILD_ROOT
 
 %files -f %{name}-file-list
 %defattr(-,root,root)
-%doc README ChangeLog TODO
-/usr/sbin/fwctl
-/usr/man/man8/fwctl.8
+%doc README ChangeLog TODO NEWS
 %config /etc/rc.d/init.d/fwctl
 %dir /etc/fwctl
 %config(missingok) /etc/logrotate.d/fwctl
 %config(noreplace) /etc/fwctl/aliases
 %config(noreplace) /etc/fwctl/interfaces
 %config(noreplace) /etc/fwctl/rules
-%config /etc/cron.hourly/fwctl_acct
+%config /etc/cron.d/fwctl
+%config(noreplace) %attr(640,root,root) /var/log/fwctl_*
 
 %changelog
+* Sun Jan 23 2000  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
+  [0.23-1i]
+- Updated to version 0.23.
+- Added empty fwctl_acct and fwctl_log files with empty size but
+  proper permissions.
+- Cron script became a crontab file.
+- Update of the file list.
+
 * Wed Dec 15 1999  Francis J. Lacoste <francis.lacoste@iNsu.COM> 
   [0.22-1i]
 - Updated to version 0.22.

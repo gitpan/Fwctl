@@ -61,15 +61,23 @@ sub accept_rules {
 
   my ($control, $esp ) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   accept_udp_ruleset( $control, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ|MASQNOHIGH : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
   accept_ip_ruleset( $esp, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		     $masq, $options->{portfw} );
+
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
   accept_ip_ruleset( $esp, $dst, $dst_if, $src, $src_if,
-		     $options->{masq} ? UNMASQ : NOMASQ
-		   );
+		     $masq, $options->{portfw} );
 
   if ($options->{masq}) {
       system ( "/sbin/modprobe", "ip_masq_ipsec" ) == 0
@@ -83,15 +91,23 @@ sub account_rules {
 
   my ( $control, $esp ) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   acct_udp_ruleset( $control, $src, $src_if, $dst, $dst_if,
-		    $options->{masq} ? MASQ|MASQNOHIGH : NOMASQ
-		  );
+		    $masq, $options->{portfw} );
   acct_ip_ruleset( $esp, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		   $masq, $options->{portfw} );
+
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
   acct_ip_ruleset( $esp, $dst, $dst_if, $src, $src_if,
-		   $options->{masq} ? UNMASQ : NOMASQ
-		 );
+		   $masq, $options->{portfw} );
 
 }
 

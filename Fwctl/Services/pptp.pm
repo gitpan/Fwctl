@@ -61,15 +61,23 @@ sub accept_rules {
 
   my ($control, $gre ) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   accept_tcp_ruleset( $control, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		      $masq, $options->{portfw} );
   accept_ip_ruleset( $gre, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
+		     $masq, $options->{portfw} );
+
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
   accept_ip_ruleset( $gre, $dst, $dst_if, $src, $src_if,
-		     $options->{masq} ? UNMASQ : NOMASQ
-		   );
+		     $masq, $options->{portfw}  );
 
   if ($options->{masq}) {
       system ( "/sbin/modprobe", "ip_masq_pptp" ) == 0
@@ -83,15 +91,23 @@ sub account_rules {
 
   my ( $control, $gre ) = $self->prototypes( $target, $options );
 
+  my $masq = defined $options->{portfw} ? PORTFW :
+    $options->{masq} ? MASQ : NOMASQ;
+
   acct_tcp_ruleset( $control, $src, $src_if, $dst, $dst_if,
-		    $options->{masq} ? MASQ : NOMASQ
-		  );
+		      $masq, $options->{portfw} );
   acct_ip_ruleset( $gre, $src, $src_if, $dst, $dst_if,
-		     $options->{masq} ? MASQ : NOMASQ
-		   );
-  acct_ip_ruleset( $gre, $dst, $dst_if, $src, $src_if,
-		   $options->{masq} ? UNMASQ : NOMASQ
-		 );
+		      $masq, $options->{portfw} );
+
+  if ( $masq & MASQ ) {
+      $masq &= $masq ^ MASQ;
+      $masq |= UNMASQ;
+  } elsif ( $masq & PORTFW ) {
+      $masq &= $masq ^ PORTFW;
+      $masq |= UNPORTFW;
+  }
+  acct_ip_ruleset( $gre, $dst, $dst_if, $src, $src_if, 
+		   $masq, $options->{portfw} );
 
 }
 
@@ -118,6 +134,9 @@ tunnelling protocol. In order to be able to masquerade that protocol, you
 will need a kernel with the generic protocol masquerade patch applied.
 
 See ftp://ftp.rubyriver.com/pub/jhardin/masquerade/ for informations.
+
+If you want to generates rules for a server behind the firewall, you will
+have to use the --portfw option and starts manually the ipfwd daemon.
 
 =head1 AUTHOR
 

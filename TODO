@@ -5,9 +5,6 @@ Future enhancements to Fwctl
 
 - Automatic way to test the firewall. 
 
-- Report generator on accounting and log. (Will probably be part
-  of my SyslogScanner module)
-
 - User space daemon to do IDS and stateful filtering
   using the fwmonitor device.
 
