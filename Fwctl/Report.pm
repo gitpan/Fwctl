@@ -6,7 +6,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -55,7 +55,7 @@ etc.)
 =cut
 
 BEGIN {
-    ($VERSION) = '$Revision: 1.3 $' =~ /(Revision: ([\d.]+))/;
+    ($VERSION) = '$Revision: 1.6 $' =~ /(Revision: ([\d.]+))/;
     @ISA = qw( Exporter );
 
     @EXPORT = ();
@@ -250,8 +250,8 @@ sub remove_duplicates {
 	{
 	    my $nr = $new_records[$i];
 	    next unless $r->[PROTO]  == $nr->[PROTO];
-	    next unless $r->[SRC_IP] == $nr->[SRC_IP];
-	    next unless $r->[DST_IP] == $nr->[DST_IP];
+	    next unless $r->[SRC_IP] eq $nr->[SRC_IP];
+	    next unless $r->[DST_IP] eq $nr->[DST_IP];
 	    if ( $r->[PROTO] == 6 ||
 		 $r->[PROTO] == 17
 	       )
@@ -325,15 +325,98 @@ sub parse_period {
     }
 }
 
-sub check_constraint {
-    my ( $test, $match) = @_;
+my $needs_and = 0;
+sub parse_term {
+    my ($valid_fields, $sub, $constraints ) = @_;
 
-    return 1 unless defined $match && @$match;
+    # Parse assertion
+    my $term = shift @$constraints;
+    die "missing term\n" unless $term;
 
-    foreach my $m ( @$match ) {
-	return 1 if lc $test eq lc $m;
+    if ( $term eq '(' ) {
+	$sub .= " && " if $needs_and;
+	$sub .= ' ( ';
+	$needs_and = 0;
+	$sub = parse_term( $valid_fields, $sub, $constraints );
+	$term = shift @$constraints;
+	die "missing )\n" unless $term eq ')';
+	$needs_and = 1;
+    } elsif ( $term eq 'not' ) {
+	$sub .= " && " if $needs_and;
+	$sub .= ' ! (';
+	$needs_and = 0;
+	$sub = parse_term( $valid_fields, $sub, $constraints );
+	$sub .= ' )';
+	$needs_and = 1;
+    } elsif ( $term eq 'and' ) {
+	$sub .= ' && ( ';
+	$needs_and = 0;
+	$sub = parse_term( $valid_fields, $sub, $constraints );
+	$sub .= ' )';
+	$needs_and = 1;
+    } elsif ( $term eq 'or' ) {
+	$sub .= ' || ( ';
+	$needs_and = 0;
+	$sub = parse_term( $valid_fields, $sub, $constraints );
+	$sub .= ' )';
+	$needs_and = 1;
+    } elsif ( exists $valid_fields->{$term} ) {
+	my $field = ' $r->[' . $valid_fields->{$term} . ']';
+
+	$term = shift @$constraints;
+	die "incomplete constraint $field\n" unless defined $term;
+
+	$sub .= " && " if $needs_and;
+	if ( $term =~ /<|>|!=|=|>=|<=/ ) {
+	    my $op = $term;
+	    $op = "eq" if $op eq '=';
+	    $term = shift @$constraints;
+	    die "incomplete constraint $field $op\n" unless defined $term;
+
+	    # Quote term if necessary
+	    $term = 'q{' . $term . '}' unless $term =~ /^\d+$/;
+	    $sub .= " $field $op $term ";
+	} elsif ( $term =~ m!^/.+/i?! )
+	{
+	    # Regular expression
+	    $sub  .= " $field =~ $term ";
+	} else {
+	    # Comparison
+
+	    # Quote term if necessary
+	    $term = 'q{' . $term . '}' unless $term =~ /^\d+$/;
+
+	    $sub  .= " $field eq $term ";
+	}
+	$needs_and = 1;
+    } else {
+	die "unknown field ($term)\n";
     }
-    return 0;
+
+    return $sub;
+}
+
+my $true    = sub { 1 };
+
+sub build_constraints {
+    my $valid_fields = shift;
+    my @constraints = split /\s+/, join " ", @_;
+
+    return $true unless @constraints;
+
+    my $sub = 'sub { my $r = shift; return ';
+
+    $needs_and = 0;
+    while ( @constraints ) {
+	$sub = parse_term( $valid_fields, $sub, \@constraints );
+    }
+    $sub .= ' }';
+
+    # Compile into code ref
+    $sub = eval $sub;
+    die "error compiling constraints : $@\n" if $@;
+
+    return $sub;
 }
 
 sub read_records {
@@ -367,26 +450,7 @@ sub read_records {
 	    next unless $self->{start} <= $fields[TIME] &&
 	      $self->{end} >= $fields[TIME];
 
-	    next unless check_constraint( $fields[SRC_IP],
-					  $self->{opts}{src} ) ||
-			check_constraint( $fields[SRC_HOST],
-					  $self->{opts}{src} );
-	    next unless check_constraint( $fields[DST_IP],
-					  $self->{opts}{dst} ) ||
-			check_constraint( $fields[DST_HOST],
-					  $self->{opts}{dst} );
-	    next unless check_constraint( $fields[SRC_ALIAS],
-					  $self->{opts}{salias} );
-	    next unless check_constraint( $fields[DST_ALIAS],
-					  $self->{opts}{dalias} );
-	    next unless check_constraint( $fields[DST_PORT],
-					  $self->{opts}{port} ) ||
-			check_constraint( $fields[DST_SERV],
-					  $self->{opts}{port} );
-	    next unless check_constraint( $fields[PROTO],
-					  $self->{opts}{proto} ) ||
-			check_constraint( $fields[PROTO_NAME],
-					  $self->{opts}{proto} );
+	    next unless $self->{constraints}->( \@fields );
 
 	    push @$records, \@fields;
 	}
@@ -457,72 +521,16 @@ ports, source addresses and destination addressesses that appears in
 the time window specified by the threshold parameters. Defaults is 120
 (2 minutes). Use 0 to generates reports for all the packets.
 
-=item src
+=item limit
 
-Restrict records to those whose source address matches B<src>.
-You can use hostname or IP address.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item dst
-
-Restrict records to those whose destination address matches B<dst>.
-You can use hostname or IP address.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item salias
-
-Restrict records to those whose source alias matches B<salias>. You can use
-any alias as specified in the I<aliases> configuration file.
-
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item dalias
-
-Restrict records to those whose destination alias matches B<dalias>.
-You can use any alias as specified in the I<aliases> configuration file.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item sif
-
-Restrict records to those whose source address is on the interface B<sif>.
-You can use any interface as specified in the I<interfaces>
-configuration file.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item dif
-
-Restrict records to those whose destination address is on the interface B<dif>.
-You can use any interface as specified in the I<interfaces>
-configuration file.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item proto
-
-Restrict records to those whose protocol matches B<proto>.
-You can use protocol name or number.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item port
-
-Restrict records to those whose destination port matches B<port>.
-You can use service name or number.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
+This parameter can be used to restrict the records over which the
+report is generated. It is an expression which will be used to select
+a subset of all the records. You can use the following fields :
+src_ip, dst_ip, src_host, dst_host, action, device, src_port,
+dst_port, src_serv, dst_serv, proto, proto_name, and the following
+operator =, !=, <, >, <=, >=, /regex/, /regex/i. Those operators have
+the same meaning as in perl. You can also use parentheses and the
+following logic operator : or, and, not .
 
 =back
 
@@ -566,6 +574,23 @@ sub new {
 	$self->{threshold} = 120; # 2 minutes
     }
 
+    $self->{constraints} = build_constraints( {
+					       action	  => ACTION,
+					       device	  => DEVICE,
+					       proto	  => PROTO,
+					       proto_name => PROTO_NAME,
+					       src_ip	  => SRC_IP,
+					       src_host	  => SRC_HOST,
+					       src_if	  => SRC_IF,
+					       src_alias  => SRC_ALIAS,
+					       src_port   => SRC_PORT,
+					       src_serv   => SRC_SERV,
+					       dst_ip	  => DST_IP,
+					       dst_host	  => DST_HOST,
+					       dst_if	  => DST_IF,
+					       dst_alias  => DST_ALIAS,
+					       dst_port	  => DST_PORT,
+					      }, $self->{opts}{limit} );
     bless $self, $class;
 
     $self->read_records;

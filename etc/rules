@@ -7,7 +7,7 @@
 #
 # Action service src dst options
 #
-# Action is usually ACCEPT or BLOCK or REJECT.
+# Action is usually ACCEPT or DENY or REJECT.
 #
 # Service is one of the firewall service defined.
 #
@@ -16,7 +16,7 @@
 # Standard options:
 #
 # masq : use masquerade for this service.
-# log  : log packet to syslog (default for  BLOCK and REJECT)
+# log  : log packet to syslog (default for  DENY and REJECT)
 # nolog: do not log packet to syslog (default for ACCEPT)
 
 ## Local traffic is OK

@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -52,11 +52,12 @@ sub block_rules {
 
   my ($udp,$tcp) = $self->prototypes( $target, $options );
 
-  if ($options->{server}) {
-    $udp->attribute( SourcePort => 'domain' );
-    block_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if );
+  my $query;
+  if ( $options->{server} ) {
+      $query = undef;
+  } else {
+      $query = $options->{"query-port"} || $self->{query_port};
   }
-  my $query = $options->{"query-port"} || $self->{query_port};
   $udp->attribute( SourcePort => $query );
   block_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if );
   block_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if );
@@ -71,12 +72,12 @@ sub accept_rules {
   my $masq = defined $options->{portfw} ? PORTFW :
     $options->{masq} ? MASQ : NOMASQ;
 
-  if ($options->{server}) {
-    $udp->attribute( SourcePort => 'domain' );
-    accept_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
-			$masq, $options->{portfw} );
+  my $query;
+  if ( $options->{server} ) {
+      $query = undef;
+  } else {
+      $query = $options->{"query-port"} || $self->{query_port};
   }
-  my $query = $options->{"query-port"} || $self->{query_port};
   $udp->attribute( SourcePort => $query );
   accept_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if,
 		      $masq, $options->{portfw} );
@@ -91,11 +92,13 @@ sub account_rules {
   my ($udp,$tcp) = $self->prototypes( $target, $options );
   my $masq = defined $options->{portfw} ? PORTFW :
     $options->{masq} ? MASQ : NOMASQ;
-  if ($options->{server}) {
-    $udp->attribute( SourcePort => 'domain' );
-    acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if, $masq );
+
+  my $query;
+  if ( $options->{server} ) {
+      $query = undef;
+  } else {
+      $query = $options->{"query-port"} || $self->{query_port};
   }
-  my $query = $options->{"query-port"} || $self->{query_port};
   $udp->attribute( SourcePort => $query );
   acct_udp_ruleset( $udp, $src, $src_if, $dst, $dst_if, $masq );
   acct_tcp_ruleset( $tcp, $src, $src_if, $dst, $dst_if, $masq );
@@ -116,21 +119,22 @@ Fwctl::Services::name_service - Fwctl module to handle the DNS protocol.
 
 =head1 SYNOPSIS
 
-    accept   name_service -src INTERNET -dst NAME_SERVER -server
+    accept   name_service -src INTERNET -dst NAME_SERVER
     accept   name_service -src NAME_SERVER -dst INTERNET -query-port 5353
 
 =head1 DESCRIPTION
 
 The name_service module handles the DNS protocol. It can handle both
-name server and resolver configuration. When using the I<server> option,
-the query can be from the port 53 (for bind 4 compatibility) and above 1024.
-You can use the I<query-port> option to specify the client port.
+name server and resolver configuration. When using the I<server>
+option, the query can be from any ports. You can use the I<query-port>
+option to specify the client port.
 
-Default is to use only ports > 1024 as client port. (Usual resolver situation.)
+Default is to use only ports > 1023 as client port. (Usual resolver
+situation.)
 
 =head1 AUTHOR
 
-Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations Inc.
+Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -14,9 +14,10 @@ package Fwctl;
 
 use strict;
 use vars qw( $VERSION $PORTFW $IPCHAINS );
+use Carp;
 
 BEGIN {
-  $VERSION = '0.24';
+  $VERSION = '0.25';
 
   eval { use IPChains::PortFW; new IPChains::PortFW; };
   $PORTFW = 1 unless $@;
@@ -63,12 +64,24 @@ sub new {
 		    services	    => {},
 		    rules	    => [],
 		    account	    => 0,
+		    copy	    => 1,
+		    log		    => 1,
+		    mark	    => 0,
+		    default	    => 'DENY',
 		    @_,		    # Overrides any default with arguments
 	      }, $class;
 
   # Add services dir to @INC
   eval( join( " ", "use lib qw(", @{ $self->{services_dir} },");" ) );
   die __PACKAGE__, ": error while adding services dir to \@INC: $@" if $@;
+
+  carp __PACKAGE__, "default must be one of ACCEPT, REJECT or DENY"
+    unless $self->{default} =~ /^ACCEPT|REJECT|DENY$/;
+
+  carp __PACKAGE__, "mark not an integer" unless $self->{mark} =~ /^\d+$/;
+
+  warn __PACKAGE__, "default policy is not REJECT or DENY"
+    if $self->{default} eq "ACCEPT";
 
   # Read all configuration files
   $self->read_interfaces();
@@ -81,15 +94,15 @@ sub new {
 
 # Get or sets the interfaces.
 sub interfaces {
-  my $self = shift;
+    my $self = shift;
 
-  if (@_) {
-    # Must get an array of interface references
-    $self->{interfaces} = map { $_->{name} => $_ } @_;
-  }
+    if (@_) {
+	# Must get an array of interface references
+	$self->{interfaces} = map { $_->{name} => $_ } @_;
+    }
 
-  # Returns an array of references
-  values %{$self->{interfaces}};
+    # Returns an array of references
+    values %{$self->{interfaces}};
 }
 
 # Get or set an interface by name
@@ -318,7 +331,7 @@ sub reset_fw {
   $self->dump_acct;
 
   # Sets default policies
-  my $fwctl = IPChains->new( Rule => 'DENY' );
+  my $fwctl = IPChains->new( Rule => $self->{default} );
   $fwctl->set_policy( "input" );
   $fwctl->set_policy( "forward" );
   $fwctl->set_policy( "output" );
@@ -549,9 +562,16 @@ sub configure {
 
   # Then add the logging rules
   my $fwctl = IPChains->new();
-  $fwctl->attribute( Rule => 'DENY' );
-  $fwctl->attribute( Log =>  1 );
-  #$fwctl->attribute( Output => 1 );
+  $fwctl->attribute( Rule => $self->{default} );
+  if ( $self->{log} ) {
+      $fwctl->attribute( Log =>  1 );
+  }
+  if ( $self->{copy} ) {
+      $fwctl->attribute( Output => 1 );
+  }
+  if ( $self->{mark}) {
+      $fwctl->attribute( Mark => $self->{mark} );
+  }
   $fwctl->append( "input" );
   $fwctl->append( "forward" );
   $fwctl->append( "output" );
@@ -667,7 +687,7 @@ ERROR
 			    });
   }
   close INTERFACES;
-  die "fwctl: no EXT interface defined." 
+  die "fwctl: no EXT interface defined."
     unless defined $self->interface('EXT');
 }
 
@@ -1375,7 +1395,7 @@ standard services for details.
 
 =head1 AUTHOR
 
-Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations Inc.
+Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

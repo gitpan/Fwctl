@@ -5,7 +5,7 @@
 #
 #    Author: Francis J. Lacoste <francis@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -102,7 +102,7 @@ shoot you in the foot, I know.
 
 =head1 AUTHOR
 
-Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations Inc.
+Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

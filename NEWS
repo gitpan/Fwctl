@@ -1,3 +1,30 @@
+Fwctl NEWS -- History of User-Visible Changes.  Feb 17 2000
+
+* Changes in fwctl 0.25
+
+** Configuration 
+    - Possible to change the default policy using a new --default 
+      command line option. (Use with care.) Defaults remains DENY.
+    - Possibility to change the default logging policy with a new
+      --log or --nolog command line option. Defaults remains --log.
+    - Possibility to specify default marking and copy behaviour using
+      the command line --mark and --copy. The defaults is now to copy
+      unknown packets to user space. 
+
+** Reports
+    - Selection of subset of records is done via expression like tcpdump's
+      rather than command line switch.
+
+** Name service
+    - When using the -server option, accepts queries from any ports rather
+      than 53 and > 1023.
+
+** Bug fixes:
+    - Postrotate script definitions.
+    - Src and dst ip when removing duplicates in reports wasn't done 
+      properly.
+
+
 Fwctl NEWS -- History of User-Visible Changes.  Jan 26 2000
 
 * Changes in fwctl 0.24

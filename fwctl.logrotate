@@ -5,8 +5,8 @@
         missingok
 	postrotate
 	    # Generates weekly report
-	    /usr/sbin/fwctlacctreport -r summary -r packets -r bytes -sample day /var/log/fwct_acct.1 --start `date --date '7 days ago' +'%Y-%m-%d'` | mail -s "Fwctl Weekly IP Accounting Report for `hostname`" root
-	endpostrotate
+	    /usr/sbin/fwctlacctreport -r summary -r packets -r bytes -sample day --start `date --date '7 days ago' +'%Y-%m-%d'` /var/log/fwctl_acct.1 | mail -s "Fwctl Weekly IP Accounting Report for `hostname`" root
+	endscript
 }
 
 /var/log/fwctl_log {
@@ -16,6 +16,6 @@
         missingok
 	postrotate
 	    # Generates weekly report
-	    /usr/sbin/fwctlreport -r service_sum -r src_host_sum -r src_host /var/log/fwct_log.1 --start `date --date '7 days ago' +'%Y-%m-%d'` | mail -s "Fwctl Weekly Firewall Activity Report for `hostname`" root
-	endpostrotate
+	    /usr/sbin/fwctlreport -r service_sum -r service_host_sum -r src_host_sum  --start `date --date '7 days ago' +'%Y-%m-%d'` /var/log/fwctl_log.1 | mail -s "Fwctl Weekly Firewall Activity Report for `hostname`" root
+	endscript
 }

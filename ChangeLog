@@ -1,3 +1,54 @@
+2000-02-17  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* TAG: FWCTL_0_25_1
+	
+	* fwctl.logrotate: Moved back weekly report to log rotation script.
+
+	* fwctl.cron: Moved back weekly report to log rotation script.
+
+2000-02-16  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* TAG: FWCTL_0_25
+	
+	* fwctl.logrotate: Moved weekly reports to fwctl.cron.
+
+	* fwctl.cron: Added weekly reports from logrotate.d sample 
+	configuration.
+
+2000-02-11  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* fwctl: Fixed problem with the way the new switches were 
+	  interpreted.
+
+	* fwctlreport.pm: Changed way to select subset of records with
+	an expression rather than many switches.
+
+	* Fwctl/Report.pm: Changed way to select subset of records with
+	an expression rather than many switches.
+
+	* Fwctl.spec: Updated for version 0.25.
+
+	* Fwctl/Report.pm: When removing duplicates, we should compare
+	src and dst ip using eq not ==.
+
+2000-02-07  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* fwctl.logrotate: Added service_host_sum to weekly report and
+	drop src_host.
+
+	* Fwctl/Services/name_service.pm: When using the server option,
+	accepts UDP queries from any source port.
+
+	* fwctl.logrotate: endpostrotate -> endscript.
+
+2000-01-30  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* fwctl: Added --nocopy, --nolog, --default and --mark options
+	to override default policy.
+	
+	* Fwctl.pm: Possibility to override defaults policy for logging, 
+	copy, deny policy and marking.
+
 2000-01-26  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
 
 	* TAG: FWCTL_0_24

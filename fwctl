@@ -6,7 +6,7 @@
 #
 #    Author: Francis J. Lacoste <francis.lacoste@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -20,12 +20,15 @@ sub usage() {
 die <<EOFU;
 usage: fwtcl [--aliases file] [ --interfaces file ] [--rules file]
 	     [--services-dir dir ]+ [--accounting-file file ]
+	     [--copy | --nocopy] [ --mark mark ]
+	     [--log | --nolog] [--default ACCEPT|REJECT|DENY]
 	(start|stop|restart|flush|dump-acct|check|dump-config)
 EOFU
 }
 my %opts = ();
 GetOptions( \%opts, "aliases=s", "interfaces=s", "rules=s",
-	    "services=s@", "accounting-file=s"
+	    "services=s@", "accounting-file=s",  "copy!",
+	    "mark!", "log!", "default=s"
 	  )
   or usage;
 
@@ -36,8 +39,12 @@ $fwopts{aliases_file}	    = $opts{aliases}    if $opts{aliases};
 $fwopts{rules_file}	    = $opts{rules}	if $opts{rules};
 $fwopts{services_dir}	    = $opts{"services-dir"}
   if $opts{"services-dir"};
-$fwopts{accounting_file}   = $opts{"accounting-file"}
+$fwopts{accounting_file}    = $opts{"accounting-file"}
   if $opts{"accounting-file"};
+$fwopts{mark}		    = $opts{mark}	if exists $opts{mark};
+$fwopts{copy}		    = $opts{copy}	if exists $opts{copy};
+$fwopts{log}		    = $opts{log}	if exists $opts{log};
+$fwopts{default}	    = $opts{default}	if exists $opts{default};
 
 ARGS:
 for ( $ARGV[0] ) {
@@ -93,6 +100,8 @@ fwctl - Program to configure the Linux kernel firewall.
 
 fwtcl	[--aliases file] [ --interfaces file ] [--rules file]
 	[--services-dir dir ]+ [--accounting-file file ]
+	[--copy | --nocopy] [--mark mark] [--log | --nolog]
+	[--default ACCEPT|REJECT|DENY]
 	(start|stop|flush|restart|dump-acct|check|dump-config)
 
 =head1 DESCRIPTION
@@ -177,11 +186,32 @@ This option may be specified multiple times.
 Specifies the path to the accounting file.
 Default is F</var/log/fwctl_acct>.
 
+=item [no]log
+
+Determines the default logging policy for the firewall. The default is
+to log all packets which don't match explicitely any rules.
+
+=item [no]copy
+
+Determines the default copy policy for the firewall. The default is to
+mark for copy to user space all packets which don't match explicitely
+any rules.
+
+=item mark
+
+If this option is set, all packets which don't match explicitely one
+rule, will be marked with the specified mark.
+
+=item policy
+
+This sets the default policy for unknown packets. Default is DENY, can
+be one of ACCEPT, REJECT or DENY.
+
 =back
 
 =head1 AUTHOR
 
-Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations Inc.
+Copyright (c) 1999,2000 Francis J. Lacoste and iNsu Innovations Inc.
 All rights reserved.
 
 This program is free software; you can redistribute it and/or modify

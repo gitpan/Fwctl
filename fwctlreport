@@ -6,7 +6,7 @@
 #
 #    Author: Francis J. Lacoste <francis.lacoste@iNsu.COM>
 #
-#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#    Copyright (c) 1999,2000 Francis J. Lacoste, iNsu Innovations Inc.
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms same terms as perl itself.
@@ -299,21 +299,17 @@ print <<EOFU;
 usage: fwctlreport [--start report_start]
 		   [--end report_end | --period report_period ]
 		   [--threshold cutoff_threshold]
-		   [--nohostname]
-		   [--help]
-		   [--sif interface ...] [--dif interface ...]
-		   [--src ip|host ...]   [--dst ip/host ...]
-		   [--salias alias ...]  [--dalias alias ...]
-		   [--proto proto ...]   [--port ...]
+		   [--nohostname] [--limit expression]
 		   [--report report ...]
+
+or     fwctlreport --help
 EOFU
     exit defined $_[0] ? $_[0] : 1;
 }
 
 my %opts = ( hostname => 1, );
 GetOptions( \%opts, "start=s", "end=s", "period=s", "threshold=s",
-	    "report=s@", "src=s@",   "dst=s@",   "sif=s@", "dif=s@",
-	    "port=s@",   "proto=s@", "salias=s@", "dalias=s@", "hostname!"
+	    "report=s@", "limit=s",  "hostname!", "help"
 	  )
   or usage;
 
@@ -585,7 +581,7 @@ Destination: @<<<<<<<<<<<<<<<<<<<<<< @>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
              $fmt_dst_ip,            $fmt_dst_alias
              @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
              $fmt_dst_host
-nnn
+
 .
 
 __END__
@@ -600,12 +596,8 @@ fwctlreport - Generates text reports from fwctllog output.
 
 fwctlreport [--start report_start]
 	    [--end report_end | --period report_period ]
-	    [--threshold cutoff_threshold]
+	    [--threshold cutoff_threshold] [--limit expression]
 	    [--nohostname]
-	    [--src ip|host ...]  [--dst ip/host ...]
-	    [--sif interface ...] [--dif interface ...]
-	    [--salias alias ...] [--dalias alias ...]
-	    [--proto proto ...]  [--port ...]
 	    [--report report ...]
 	    logfile ...
 
@@ -657,78 +649,16 @@ ports, source addresses and destination addressesses that appears in
 the time window specified by the threshold parameters. Defaults is 120
 (2 minutes). Use 0 to generates reports for all the packets.
 
-=item src
+=item limit
 
-Restrict records to those whose source address matches B<src>.
-You can use hostname or IP address.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item dst
-
-Restrict records to those whose destination address matches B<dst>.
-You can use hostname or IP address.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item salias
-
-Restrict records to those whose source alias matches B<salias>. You can use
-any alias as specified in the I<aliases> configuration file.
-
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item dalias
-
-Restrict records to those whose destination alias matches B<dalias>.
-You can use any alias as specified in the I<aliases> configuration file.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item sif
-
-Restrict records to those whose source address is on the interface B<sif>.
-You can use any interface as specified in the I<interfaces>
-configuration file.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item dif
-
-Restrict records to those whose destination address is on the interface B<dif>.
-You can use any interface as specified in the I<interfaces>
-configuration file.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item proto
-
-Restrict records to those whose protocol matches B<proto>.
-You can use protocol name or number.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=item port
-
-Restrict records to those whose destination port matches B<port>.
-You can use service name or number.
-
-You can use this parameter multiple times to specify multiple
-possibility. The record will be included if it matches any of those.
-
-=back
-
-=head1 OUTPUT OPTIONS
-
-To customize output you can use the following options :
+This parameter can be used to restrict the records over which the
+report is generated. It is an expression which will be used to select
+a subset of all the records. You can use the following fields :
+src_ip, dst_ip, src_host, dst_host, action, device, src_port,
+dst_port, src_serv, dst_serv, proto, proto_name, and the following
+operator =, !=, <, >, <=, >=, /regex/, /regex/i. Those operators have
+the same meaning as in perl. You can also use parentheses and the
+following logic operator : or, and, not .
 
 =over
 
