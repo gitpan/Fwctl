@@ -1,0 +1,85 @@
+1999-09-15  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_20
+
+	* Fwctl.pm:		Fixes documentation.
+
+	* README:		Add instructions for non RedHat users.
+
+	
+1999-09-03  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_18
+
+	* Fwctl/Services/dhcp.pm    Added missing rules from client ip
+				    to all broadcast address.
+
+	* etc/rules		Fixed some small errors in the 
+				example rules file.
+
+1999-08-23  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_17
+
+	* Fwctl.pm		    Forgot to increment version number.
+	
+1999-08-23  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_16
+
+	* Fwctl.pm		    Fixed quote inserted before commit.
+	
+1999-08-23  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_15
+
+	* Fwctl.pm(find_interface)  Check first for local IP. This caused
+				    a problem when there multiple
+				    interface aliases on the same subnet.
+				    
+
+1999-08-19  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_14
+	
+	* etc/aliases		    Updated to give a more
+	* etc/rules		    complete example setup.
+	* etc/interfaces
+
+	* Fwctl/Services/ftp.pm	    ctrl_port wasn't listed
+				    as a valid option.
+
+				    Added a data_port option.
+
+	* Fwctl/Services/hylafax.pm Added HylaFAX module.
+
+	* Fwctl/Services/syslog.pm  Added syslog module.
+	
+
+1999-07-13  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	* TAG: FWCTL_0_13
+
+	* Fwctl/Services/ping.pm: Corrected masquerading error.
+
+	* test.pl:		Added test for masqueraded
+				ping to the Internet.
+
+1999-07-09  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	* TAG: FWCTL_0_12.
+	
+	* Fwctl/Services/rsh.pm: Stderr is from dst to src.
+	
+	* fwctl.init:		Added restart and reload action.
+				Fixed a typo.
+
+	* Fwctl.pm (dump_acct): Add -n switch when dumping 
+			        chains to preven DNS lockup.
+
+1999-07-05  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	- Completed test suite.
+	- TAG: FWCTL_0_11.
+	
+1999-05-29  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+	- Internal release. Completed all features and documentation.
+	- Begin testing.
+	- Version 0.10
+	
+1999-05-15  Francis J. Lacoste  <francis.lacoste@iNsu.COM>
+
+	- original version; created by h2xs 1.19
+

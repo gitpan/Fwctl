@@ -1,0 +1,180 @@
+#!/usr/bin/perl
+#
+#    fwctl: program to configure the linux firewall.
+#
+#    This file is part of Fwctl.
+#
+#    Author: Francis J. Lacoste <francis.lacoste@iNsu.COM>
+#
+#    Copyright (C) 1999 Francis J. Lacoste, iNsu Innovations Inc.
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms same terms as perl itself.
+
+use strict;
+use Fwctl;
+use Getopt::Long;
+use Data::Dumper;
+
+sub usage() {
+die <<EOFU;
+usage: fwtcl [--aliases file] [ --interfaces file ] [--rules file]
+	     [--services-dir dir ]+ [--accounting-file file ]
+	(start|stop|restart|dump-acct|check|dump-config)
+EOFU
+}
+my %opts = ();
+GetOptions( \%opts, "aliases=s", "interfaces=s", "rules=s",
+	    "services=s@", "accounting-file=s"
+	  )
+  or usage;
+
+# Translate options
+my %fwopts = ();
+$fwopts{interfaces_file}    = $opts{interfaces} if $opts{interfaces};
+$fwopts{aliases_file}	    = $opts{aliases}    if $opts{aliases};
+$fwopts{rules_file}	    = $opts{rules}	if $opts{rules};
+$fwopts{services_dir}	    = $opts{"services-dir"}
+  if $opts{"services-dir"};
+$fwopts{accounting_file}   = $opts{"accounting-file"}
+  if $opts{"accounting-file"};
+
+ARGS:
+for ( $ARGV[0] ) {
+  my $arg = $_;
+  /check|dump-config/ && do {
+    eval {
+      my $fwctl = new Fwctl( %fwopts );
+      print "fwctl: Configuration OK\n";
+      print Dumper( $fwctl ) if $arg =~ /dump-config/;
+    };
+    die "fwctl: Configuration error.\n$@\n" if $@;
+    last ARGS;
+  };
+  /start/ && do {
+    my $fwctl = new Fwctl( %fwopts );
+    $fwctl->configure;
+    last ARGS;
+  };
+  /stop/ && do {
+    my $fwctl = new Fwctl( %fwopts );
+    $fwctl->stop;
+    last ARGS;
+  };
+  /dump-acct/ && do {
+    my $fwctl = new Fwctl( %fwopts );
+    $fwctl->dump_acct;
+    last ARGS;
+  };
+  usage;
+}
+
+
+__END__
+
+=pod
+
+=head1 NAME
+
+fwctl - Program to configure the Linux kernel firewall.
+
+=head1 SYNOPSIS
+
+fwtcl	[--aliases file] [ --interfaces file ] [--rules file]
+	[--services-dir dir ]+ [--accounting-file file ]
+	(start|stop|restart|dump-acct|check|dump-config)
+
+=head1 DESCRIPTION
+
+fwctl configure the Linux kernel firewall using the Fwctl module.
+
+=head2 COMMAND
+
+=over
+
+=item start
+
+Reset and the firewall and configure using the Fwctl module
+according to the rules of the rules file.
+
+=item stop
+
+Reset the firewall and allow only loopback IP traffic.
+
+=item restart
+
+Does the same thing as a B<start> since start already resets
+the firewall.
+
+=item check
+
+Parses the configuration files to see if there are any problems
+with them.
+
+=item dump-acct
+
+Dump the byte counters associated to accounting rules in the
+accounting log file. The counters are reset to zero by this
+operation.
+
+Note that the accounting rules are dumped before the firewall
+is reset, so there is no need to use this command before a 
+B<start> or B<stop>.
+
+=item dump-config
+
+Intended for debugging. The configuration files are parsed and
+the configuration object is printed on STDOUT using Data::Dumper.
+
+=back
+
+=head1 OPTIONS
+
+=over
+
+=item aliases
+
+Specifies the path to the F<aliases> file.
+Default is F</etc/sysconfig/fwctl/aliases>.
+
+=item interfaces
+
+Specifies the path to the F<interfaces> file.
+Default is F</etc/sysconfig/fwctl/interfaces>
+
+=item rules
+
+Specifies the path to the F<rules> file.
+Default is F</etc/sysconfig/fwctl/rules>
+
+=item services-dir
+
+Sets the search patch for service modules. The default is to look in
+I<PERLPATH> and F</etc/sysconfig/services/fwctl>.
+Using this option removes the last  directory from the search path
+and adds the directory specified as option. Note that the default perl
+module path are always searched.
+
+This option may be specified multiple times.
+
+=item accounting-file
+
+Specifies the path to the accounting file.
+Default is F</var/log/ip_acct/acct>.
+
+=back
+
+=head1 AUTHOR
+
+Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations Inc.
+All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms as perl itself.
+
+=head1 SEE ALSO
+
+Fwctl(3) Fwctl::RuleSet(3).
+
+=cut
+

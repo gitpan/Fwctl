@@ -1,0 +1,17 @@
+Future enhancements to Fwctl
+----------------------------
+- Find a way to customize the install 
+  to handle the sbin et config file installation.
+
+- Automatic way to test the firewall. 
+
+- Report generator on accounting and log. (Will probably be part
+  of my SyslogScanner module)
+
+- User space daemon to do IDS and stateful filtering
+  using the fwmonitor device.
+
+- Have a way to generate all the rules without setting them,
+  to retreive the current settings and determine what need
+  to be changed rather, than the actual tear down, rebuild.
+

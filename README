@@ -1,0 +1,89 @@
+Fwctl
+=====
+
+Version: 0.20
+
+Requirements
+------------
+kernel 2.2
+ipchains 1.3.8
+IPChains.pm 0.5
+Network::IPv4Addr.pm 0.05
+
+Description
+-----------
+
+Fwctl is a module to configure the Linux kernel packet filtering firewall
+using higher level abstraction than rules on input, output and forward
+chains. It supports masquerading and accounting as well.
+
+With it, you can configure your firewall using 
+
+accept traffic_control
+accept ping -src INTERNAL_NET -dst INTERNET -masq
+accept http -src INTERNAL_NET -dst PROXY
+accept http -src PROXY -dst INTERNET
+accept name_service -src INT_DNS_SRV -dst DNS_SERVER -query-port 5353
+accept name_service -src DNS_SERVER  -dst INTERNET   -query-port 5353
+accept name_service -src INTERNET -dst DNS_SERVER -server
+accept telnet -src INTERNAL_NET -dst INTERNET -masq
+deny netbios -nolog #Reduce log file clutter
+
+Rather than the approximate 100 rules to have the equivalent in a tight
+configuration. (When the default policy is to deny everything on all chains,
+and when you are using interface name in all rules.)
+
+Oh, it handles accounting too.
+
+Installing
+----------
+
+If you are on RedHat 6.0, I strongly suggest you use the RPM file or
+the spec file to generate one.
+
+If you are not on a RedHat 6.0 compatible system, you can use 
+the usual:
+
+    perl Makefile.PL
+    make
+    make install
+
+This will install *only* the Fwctl module.  You will need to install
+the following files manually, according to your distribution layout :
+
+    fwctl : Script to start/restart/reconfigure the firewall
+
+    fwctl.init : SysV style shell script to start the firewall at boot.
+
+    fwctl.cron : Shell script that dumps the accounting information once
+		 in a while. Should be run periodically.
+
+The default path to the configuration files are
+
+	/etc/sysconfig/fwctl/aliases
+	/etc/sysconfig/fwctl/interfaces
+	/etc/sysconfig/fwctl/rules
+
+Testing
+-------
+
+If you want to run the regression test, you must do so as root
+and I suggest you shutdown your network interfaces when doing so.
+
+Documentation
+-------------
+
+Documentation is included in POD format.
+
+Bugs
+----
+
+Send bug reports and suggestions to francis.lacoste@iNsu.COM.
+
+Copyright
+---------
+
+Copyright (c) 1999 Francis J. Lacoste and iNsu Innovations. inc.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms same terms as perl itself.
